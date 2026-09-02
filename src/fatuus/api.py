@@ -46,7 +46,7 @@ def clean(payload: TextRequest) -> dict:
     sanitized = sanitizer.clean(payload.text)
 
     pipeline = HumanizationPipeline(Gemini(id=MODEL_ID), lang=payload.lang)
-    result = pipeline.run(sanitized["cleaned_text"])
+    result = pipeline.run(sanitized["cleaned_text"], original_text=payload.text)
 
     return {
         "cleaned_text": result.final_text,

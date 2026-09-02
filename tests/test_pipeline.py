@@ -6,8 +6,10 @@ from unittest.mock import patch
 os.environ.setdefault("GOOGLE_API_KEY", "test-key-for-unit-tests")
 
 from agno.models.google import Gemini
+from agno.run.agent import RunOutput
 
 from fatuus.pipeline import HumanizationPipeline
+from fatuus.sanitizer import FatuusSanitizer
 
 ORIGINAL_WITH_SLOP = (
     "É importante ressaltar que o sistema funciona bem. É importante "
@@ -69,6 +71,46 @@ class TestHumanizationPipeline(unittest.TestCase):
         result = pipeline.run(ORIGINAL_WITH_SLOP)
         self.assertFalse(result.accepted)
         self.assertEqual(result.final_text, ORIGINAL_WITH_SLOP)
+
+
+class TestSanitizerToPipelineIntegration(unittest.TestCase):
+    """Fluxo real do `/clean`: Camada 0 sanitiza, Camada 1 reescreve.
+
+    Só o `Agent.run` é mockado — o `Workflow`, o `Loop` e o gate rodam de
+    verdade. Foi o mock no nível de `Workflow.run` que escondeu o achado #3
+    por dez revisões de task.
+    """
+
+    def setUp(self):
+        self.model = Gemini(id="gemini-3.7-flash")
+        self.sanitized = FatuusSanitizer(lang="pt").clean(ORIGINAL_WITH_SLOP)
+
+    @patch("agno.agent.Agent.run")
+    def test_realistic_rewrite_passes_the_gate_in_the_real_flow(self, mock_agent_run):
+        mock_agent_run.return_value = RunOutput(content=GOOD_CANDIDATE)
+        pipeline = HumanizationPipeline(self.model, lang="pt")
+
+        result = pipeline.run(
+            self.sanitized["cleaned_text"], original_text=ORIGINAL_WITH_SLOP
+        )
+
+        self.assertTrue(result.accepted, result.gate.reasons)
+        self.assertEqual(result.final_text, GOOD_CANDIDATE)
+
+    @patch("agno.agent.Agent.run")
+    def test_gate_measures_size_against_the_pre_sanitization_text(
+        self, mock_agent_run
+    ):
+        mock_agent_run.return_value = RunOutput(content=GOOD_CANDIDATE)
+        pipeline = HumanizationPipeline(self.model, lang="pt")
+
+        sem_baseline = pipeline.run(self.sanitized["cleaned_text"])
+
+        self.assertFalse(sem_baseline.accepted)
+        self.assertTrue(
+            any("variação de tamanho" in r for r in sem_baseline.gate.reasons),
+            sem_baseline.gate.reasons,
+        )
 
 
 if __name__ == "__main__":

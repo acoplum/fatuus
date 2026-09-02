@@ -84,6 +84,7 @@ class HumanizationPipeline:
         self.max_iterations = max_iterations
         self.detector = FatuusDetector(lang=lang)
         self._original_text = ""
+        self._size_baseline_text = ""
 
     def _build_workflow(self, needs_watermark: bool) -> Workflow:
         steps: List[Step] = [
@@ -107,9 +108,12 @@ class HumanizationPipeline:
             )
 
         def _gate_end_condition(outputs: List[StepOutput]) -> bool:
-            candidate_text = outputs[-1].content if outputs else ""
+            candidate_text = (outputs[-1].content if outputs else "") or ""
             return evaluate_gate(
-                self.lang, self._original_text, candidate_text
+                self.lang,
+                self._original_text,
+                candidate_text,
+                size_baseline_text=self._size_baseline_text,
             ).accepted
 
         loop = Loop(
@@ -120,9 +124,15 @@ class HumanizationPipeline:
         )
         return Workflow(name="fatuus_camada1", steps=[loop])
 
-    def run(self, sanitized_text: str) -> PipelineResult:
-        """Executa a Camada 1 sobre um texto já limpo pela Camada 0."""
+    def run(self, sanitized_text: str, original_text: str = "") -> PipelineResult:
+        """Executa a Camada 1 sobre um texto já limpo pela Camada 0.
+
+        `original_text` é o texto pré-sanitização; vazio significa medir a
+        razão de tamanho do gate contra o próprio texto sanitizado — ver
+        `evaluate_gate`.
+        """
         self._original_text = sanitized_text
+        self._size_baseline_text = original_text
         original_analysis = self.detector.analyze(sanitized_text)
 
         if not _needs_layer1(original_analysis):
@@ -135,7 +145,12 @@ class HumanizationPipeline:
         run_output = workflow.run(input=sanitized_text)
         candidate_text = getattr(run_output, "content", None) or sanitized_text
 
-        gate = evaluate_gate(self.lang, sanitized_text, candidate_text)
+        gate = evaluate_gate(
+            self.lang,
+            sanitized_text,
+            candidate_text,
+            size_baseline_text=original_text,
+        )
 
         if gate.accepted:
             return PipelineResult(

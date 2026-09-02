@@ -69,6 +69,20 @@ class TestCleanEndpoint(unittest.TestCase):
         self.assertEqual(body["cleaned_text"], "Texto limpo.")
         self.assertTrue(body["layer1_accepted"])
 
+    @patch("fatuus.api.HumanizationPipeline.run")
+    def test_passes_the_pre_sanitization_text_as_gate_baseline(self, mock_run):
+        mock_run.return_value = PipelineResult(
+            final_text="Texto limpo.",
+            accepted=True,
+            attempts=1,
+            gate=GateResult(accepted=True, reasons=[]),
+        )
+        original = "É importante ressaltar que sim."
+
+        client.post("/clean", json={"text": original, "lang": "pt"}, auth=AUTH)
+
+        self.assertEqual(mock_run.call_args.kwargs["original_text"], original)
+
 
 class TestRouteAuthInventory(unittest.TestCase):
     """Regressão do achado Critical #1: rotas montadas pelo AgentOS sem auth.

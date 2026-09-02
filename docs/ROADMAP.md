@@ -22,7 +22,8 @@ Detalhe completo em [`features/camada-1-agno`](features/camada-1-agno/). Gate: p
 - [x] **6. Agente de Watermark Estatístico** — ✅ feito em 2026-09-02
   - Ativa condicionalmente quando a Camada 0 sinaliza indício de watermark de token-sampling. Depende de LLM (local ou cloud) — não é zero-cost, ao contrário da Camada 0.
 - [x] **7. Gate determinístico de aceitação** — ✅ feito em 2026-09-02
-  - Reroda `FatuusDetector`/`FatuusSanitizer` sobre o output do pipeline. Rejeita clichê reintroduzido, burstiness que não melhorou, ou similaridade semântica abaixo de limiar. Retry com feedback até N tentativas; esgotado, devolve o texto original com aviso.
+  - Reroda `FatuusDetector` sobre o output do pipeline. Rejeita clichê reintroduzido, caractere invisível reintroduzido, burstiness que não melhorou, ou variação de tamanho fora da faixa — a variação de tamanho é o proxy desta versão para fidelidade semântica, não há embeddings. Retry por **reamostragem** até N tentativas (`Loop` do Agno com `forward_iteration_output=False`): cada tentativa reexecuta os mesmos agentes sobre o mesmo texto de entrada e a variação vem só da amostragem do modelo — os motivos de rejeição do gate não chegam a nenhum agente. Esgotadas as tentativas, devolve o texto da Camada 0.
+  - **Retry guiado por feedback do gate fica para depois** — é o que transformaria a reamostragem em correção dirigida.
 - [ ] **8. Suporte a Modelos Locais (Ollama / vLLM)**
   - Execução 100% offline sem envio de texto a APIs externas.
 

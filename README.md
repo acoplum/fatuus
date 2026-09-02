@@ -1,36 +1,58 @@
-# Fatuus — Laboratório Exploratório (Incubação)
+# Fatuus
 
-Protótipo determinístico e suíte de testes de artificialidade sintética do projeto **Fatuus**.
+> Desconstrução de marcas sintéticas, unslop e humanização de texto.
 
-## Estrutura do Módulo
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 
-- [`fatuus_probe.py`](fatuus_probe.py): CLI standalone para inspecionar e limpar markdown / texto.
-- [`detector.py`](detector.py): Cálculo de *Burstiness*, detecção de caracteres invisíveis e densidade de clichês sintéticos.
-- [`sanitizer.py`](sanitizer.py): Higienizador determinístico de texto e normalizador de pontuação.
-- [`dicionarios.py`](dicionarios.py): Dicionários de termos e padrões em PT-BR e EN.
-- [`test_probe.py`](test_probe.py): Testes unitários com stdlib (`python3 -m unittest test_probe.py`).
-- [`exemplos/`](exemplos/): Amostras de texto em Português e Inglês para teste comparativo.
+O **Fatuus** (*do latim fatum / fatuus* — "o que foi proferido", "ilusório") é um kit de código aberto para identificar vícios de linguagem sintética (*slop*), remover marcas d'água estatísticas e recompor o ritmo orgânico (*burstiness*) de textos gerados por inteligência artificial.
 
-## Como Executar
+## Arquitetura em Duas Camadas
 
-### 1. Rodar os Testes
+1. **Camada 0 — Determinística (Zero-Cost, < 5ms):**
+   - Detecção e remoção de caracteres invisíveis / zero-width (fingerprints).
+   - Sanitização de clichês clássicos de LLM (*"é importante ressaltar"*, *"no cenário atual"*, *"mergulhar em"*, *"delve into"*, *"testament to"*).
+   - Cálculo do índice estatístico de *Burstiness* (-1 a +1) sobre a variação do comprimento de sentenças.
+
+2. **Camada 1 — Agêntica com Agno (Em desenvolvimento):**
+   - Agentes de cadência e anti-simetria para quebra de paralelismos rígidos e reescrita semântica.
+
+## Instalação e Uso
+
+### Testes
 ```bash
-python3 -m unittest test_probe.py
+python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
-### 2. Analisar um Arquivo (Probe)
+### CLI
+
 ```bash
-# Análise em Português
-python3 fatuus_probe.py probe exemplos/exemplo_ia_pt.md --lang pt
+# Analisar um arquivo markdown (gera diagnóstico e métricas)
+python3 -m fatuus.cli probe exemplos/exemplo_ia_pt.md --lang pt
 
-# Análise em Inglês
-python3 fatuus_probe.py probe exemplos/exemplo_ia_en.md --lang en
+# Em inglês
+python3 -m fatuus.cli probe exemplos/exemplo_ia_en.md --lang en
 
-# Saída em JSON para pipelines
-python3 fatuus_probe.py probe exemplos/exemplo_ia_pt.md --lang pt --json
+# Sanitizar e remover clichês determinísticos
+python3 -m fatuus.cli clean exemplos/exemplo_ia_pt.md --lang pt -o texto_limpo.md
 ```
 
-### 3. Sanitizar Texto (Clean)
-```bash
-python3 fatuus_probe.py clean exemplos/exemplo_ia_pt.md --lang pt -o texto_limpo.md
+### Como Biblioteca Python
+
+```python
+from fatuus import FatuusDetector, FatuusSanitizer
+
+detector = FatuusDetector(lang="pt")
+resultado = detector.analyze("É importante ressaltar que no cenário atual...")
+
+print(f"Score Sintético: {resultado['synthetic_score']}%")
+print(f"Burstiness: {resultado['sentence_metrics']['burstiness']}")
+
+sanitizer = FatuusSanitizer(lang="pt")
+limpo = sanitizer.clean("É importante ressaltar que...")
+print(limpo["cleaned_text"])
 ```
+
+## Licença
+
+Distribuído sob a licença [Apache-2.0](LICENSE).

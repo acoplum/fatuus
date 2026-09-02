@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fatuus"
+version = "0.1.0"
+description = "Desconstrução de marcas sintéticas e humanização de texto (Python + Agno + React)"
+readme = "README.md"
+authors = [{ name = "Acoplum", email = "contato@acoplum.com" }]
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Text Processing :: Linguistic",
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+agno = [
+    "agno>=1.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+fatuus = "fatuus.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

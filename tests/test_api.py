@@ -8,7 +8,7 @@ os.environ.setdefault("GOOGLE_API_KEY", "test-key-for-unit-tests")
 
 from fastapi.testclient import TestClient
 
-from fatuus.api import app
+from fatuus.api import MAX_TEXT_LENGTH, app
 from fatuus.auth import require_basic_auth
 from fatuus.gate import GateResult
 from fatuus.pipeline import PipelineResult
@@ -82,6 +82,26 @@ class TestCleanEndpoint(unittest.TestCase):
         client.post("/clean", json={"text": original, "lang": "pt"}, auth=AUTH)
 
         self.assertEqual(mock_run.call_args.kwargs["original_text"], original)
+
+
+class TestInputSizeLimit(unittest.TestCase):
+    """Achado #5: uma chamada a /clean pode virar até 12 chamadas ao Gemini."""
+
+    def test_rejects_text_above_the_limit(self):
+        for path in ("/probe", "/clean"):
+            with self.subTest(path=path):
+                response = client.post(
+                    path,
+                    json={"text": "a" * (MAX_TEXT_LENGTH + 1), "lang": "pt"},
+                    auth=AUTH,
+                )
+                self.assertEqual(response.status_code, 422)
+
+    def test_accepts_text_at_the_limit(self):
+        response = client.post(
+            "/probe", json={"text": "a" * MAX_TEXT_LENGTH, "lang": "pt"}, auth=AUTH
+        )
+        self.assertEqual(response.status_code, 200)
 
 
 class TestRouteAuthInventory(unittest.TestCase):

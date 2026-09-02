@@ -6,7 +6,7 @@ from agno.db.sqlite import SqliteDb
 from agno.models.google import Gemini
 from agno.os import AgentOS
 from fastapi import Depends, FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .auth import require_basic_auth
 from .detector import FatuusDetector
@@ -15,9 +15,16 @@ from .sanitizer import FatuusSanitizer
 
 MODEL_ID = os.environ.get("FATUUS_GEMINI_MODEL", "gemini-3.7-flash")
 
+# 20 000 caracteres ≈ 3 300 palavras em PT-BR: um artigo ou post longo, que é
+# o caso de uso real da ferramenta. O teto existe por custo, não por formato:
+# uma chamada a /clean vira até 12 chamadas ao Gemini (3 iterações × até 4
+# agentes), cada uma carregando o texto inteiro na entrada e na saída — nesse
+# limite, ~120 mil tokens de tráfego no pior caso de uma única requisição.
+MAX_TEXT_LENGTH = 20_000
+
 
 class TextRequest(BaseModel):
-    text: str
+    text: str = Field(max_length=MAX_TEXT_LENGTH)
     lang: str = "pt"
 
 

@@ -6,9 +6,9 @@ Dar visibilidade em tempo real do que a Camada 0/1 faz com o texto — onde est�
 
 ## Detalhes
 
-Consome o mesmo app FastAPI do `AgentOS` (ver [camada-1-agno](../camada-1-agno/)): chamada síncrona para `/probe` e `/clean` (equivalente à CLI), e streaming SSE — nativo do `AgentOS` — para acompanhar o pipeline agente-a-agente conforme ele roda, sem protocolo próprio.
+Consome o mesmo app FastAPI do `AgentOS` (ver [camada-1-agno](../camada-1-agno/)): 3 chamadas síncronas por análise para `/probe` e `/clean` (equivalente à CLI). **Sem streaming SSE** — decisão revista em relação ao plano original desta página: o design da Camada 2 concluiu que o spinner simples até a resposta final não precisa de progresso incremental do pipeline agente-a-agente. Detalhe da decisão em [`docs/superpowers/specs/2026-09-02-camada2-frontend-design.md`](../../../../../../docs/superpowers/specs/2026-09-02-camada2-frontend-design.md) (spec no repo HQ).
 
-Telas: editor de entrada, heatmap de termos sintéticos, gráfico de burstiness antes/depois, comparador de diff lado a lado, e indicador de quantas tentativas o gate levou para aceitar (ou se caiu no fallback de devolver o texto original).
+Telas: editor de entrada, heatmap de termos sintéticos (destaque inline + lista resumo), régua de burstiness antes/depois (dois marcadores), diff unificado, e indicador de quantas tentativas o gate levou para aceitar (ou se caiu no fallback de devolver o texto original).
 
 **Fora de escopo nesta fase:** autenticação/multiusuário — o self-hosted assume uma pessoa por instância local.
 

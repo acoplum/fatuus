@@ -35,5 +35,5 @@ Detalhe completo em [`features/camada-1-agno`](features/camada-1-agno/). Gate: p
 
 Detalhe completo em [`features/camada-2-frontend`](features/camada-2-frontend/).
 
-- [ ] **9. Frontend Interativo**
-  - Editor com heatmap em tempo real de termos sintéticos, gráfico de burstiness, comparador de diff antes/depois e streaming SSE do pipeline agente-a-agente — consumindo o mesmo FastAPI app do `AgentOS` (passo 5).
+- [x] **9. Frontend Interativo** — ✅ feito em 2026-09-02
+  - Editor com heatmap de termos sintéticos (destaque inline + lista resumo), régua de burstiness antes/depois, diff unificado e indicador de tentativas do gate — consumindo `/probe` e `/clean` do mesmo FastAPI app do `AgentOS` (passo 5), 3 chamadas síncronas por análise, sem streaming SSE (decisão revista no design da Camada 2: o spinner simples da v1 não precisa de progresso incremental).

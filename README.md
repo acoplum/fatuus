@@ -26,6 +26,15 @@ pip install -e ".[serve,dev]"
 cp .env.example .env  # preencher GOOGLE_API_KEY, FATUUS_BASIC_AUTH_USER, FATUUS_BASIC_AUTH_PASSWORD
 ```
 
+### Frontend (Camada 2)
+
+```bash
+cd frontend
+npm install
+npm run build   # gera frontend/dist/, servido pelo FastAPI em `/`
+npm run dev     # opcional: dev server com proxy para localhost:8080
+```
+
 ### Testes
 
 ```bash

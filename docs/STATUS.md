@@ -15,8 +15,12 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
     - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização, faixa `[0.3x, 1.4x]` (FAT-9, recalibrada em 2026-09-02 a partir do caso real de produção: uma fusão de 3 frases clichê repetidas em 1 frase natural media 0,33-0,38x e era rejeitada pelo piso antigo de 0,7x — compressão legítima de clichê, não perda de conteúdo). Segue sendo um proxy grosseiro, não similaridade semântica de verdade.
     - O retry é reamostragem, não retry guiado: cada tentativa recebe o mesmo texto de entrada, e os motivos de rejeição do gate não chegam a nenhum agente.
     - `agno[os]` traz `uvicorn` sem extras de performance (`uvicorn[standard]`) — aceitável para este teste, revisar se performance importar depois.
-    - `/docs`, `/openapi.json` e `/redoc` do `AgentOS` continuam acessíveis sem autenticação — decisão deliberada: divulgam a superfície da API, não dado nenhum.
-- 50 testes, 100% passando (`pytest`; `python3 -m unittest discover` conta menos — contagem de subtestes difere entre os dois runners).
+- **Camada 2 (frontend React):** painel duplo — editor à esquerda, relatório à direita — servido como build estático pelo mesmo FastAPI app do `AgentOS`, em `/`. Heatmap de termos sintéticos (destaque inline + lista resumo), régua de burstiness com dois marcadores (antes/depois), diff unificado (`jsdiff`) e indicador de quantas tentativas o gate levou. Validação de limite de 20 000 caracteres no cliente. 3 chamadas síncronas por análise (`/probe` + `/clean`), sem streaming SSE — decisão revista no design da Camada 2 (ver [`docs/features/camada-2-frontend`](features/camada-2-frontend/)): o spinner simples não precisa de progresso incremental.
+  - **Limitações conhecidas:** sem streaming (spinner simples até a resposta final), sem histórico de análises anteriores, sem multiusuário (Basic Auth global, uma credencial por instância self-hosted).
+  - **Migração do middleware de auth:** Basic Auth saiu de um `Depends` do FastAPI — que nunca cobria o `Mount` do Starlette usado para servir o frontend, nem rotas WebSocket — para um middleware ASGI puro (`BasicAuthMiddleware`, em `src/fatuus/auth.py`), cobrindo HTTP e WebSocket por igual. Isso fechou de passagem o gap de `/docs`, `/openapi.json` e `/redoc` sem autenticação, documentado antes nesta página como residual aceito. A revisão de segurança da migração também achou e corrigiu uma regressão real: credencial não-ASCII no header `Authorization` derrubava `secrets.compare_digest` com `TypeError` não tratado, virando 500 em vez de 401 limpo — corrigido comparando bytes UTF-8.
+  - **Conflito de rota com o `AgentOS`:** `AgentOS.get_app()` reivindica `GET /` por padrão para sua própria rota JSON de metadados, o que sombrearia o `index.html` do frontend. Resolvido com o parâmetro documentado `on_route_conflict="preserve_base_app"` do construtor do `AgentOS` (mecanismo suportado, não workaround), com teste de regressão (`TestFrontendRootRoute`) guardando contra uma versão futura do `agno` reverter o comportamento.
+  - **Verificação:** 56 testes de backend passando (`pytest`), 30 testes de frontend passando (`npm test`, dentro de `frontend/`), build Docker multi-stage (estágio Node + runtime Python) verificado localmente com build real e smoke test do container — 401 sem credencial em `/`, `/assets/*` e `/probe`, 200 com credencial e resposta real (HTML, asset, JSON). **Ainda não implantado no Cloud Run** — existe como código commitado no submódulo, verificado localmente.
+- 56 testes de backend, 100% passando (`pytest`; `python3 -m unittest discover` conta menos — contagem de subtestes difere entre os dois runners).
 
 ## Evidência da verificação em produção (2026-09-02)
 
@@ -29,7 +33,6 @@ Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por req
 
 ## O que não funciona ainda
 
-- **Camada 2 (frontend React):** especificada — ver [`features/camada-2-frontend`](features/camada-2-frontend/) —, não implementada.
 - **Suporte a idiomas além de PT-BR/EN:** fora de escopo nesta fase — cada idioma exige dicionário de marcadores próprio, não há heurística universal.
 - **Empacotamento PyPI:** planejado, não feito.
 

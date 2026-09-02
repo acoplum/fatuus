@@ -21,11 +21,16 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
+# Faixa fechada no major 2: toda suposição de API do Agno usada aqui
+# (Workflow/Loop/StepOutput, AgentOS.get_app sobre base_app, RunStatus) foi
+# verificada em 2.6.22 e só nela. Sem teto, o build do container resolvia
+# agno 3.0.5 enquanto o host tinha 2.6.22 — a deriva que causou os dois
+# incidentes de dependência da Task 8. Subir de major exige reverificar.
 agno = [
-    "agno>=1.0.0",
+    "agno>=2.6.22,<3",
 ]
 serve = [
-    "agno[os]>=1.0.0",
+    "agno[os]>=2.6.22,<3",
     "google-genai>=0.1.0",
 ]
 dev = [

@@ -62,6 +62,26 @@ class TestEvaluateGate(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertTrue(any("burstiness" in r for r in result.reasons))
 
+    def test_accepts_compact_rewrite_that_merges_repetitive_clichê_sentences(self):
+        # Caso real de produção (FAT-9): 3 frases repetitivas com o mesmo
+        # clichê, sanitizadas e depois fundidas pela Camada 1 numa única
+        # frase natural. É uma compressão legítima, não perda de conteúdo —
+        # o piso antigo de 0.7x rejeitava isso a 0.33x.
+        pre_sanitizacao = (
+            "É importante ressaltar que o sistema funciona bem. É importante "
+            "ressaltar que o sistema é rápido. É importante ressaltar que o "
+            "sistema é seguro."
+        )
+        sanitizado = (
+            "o sistema funciona bem. o sistema é rápido. o sistema é seguro."
+        )
+        candidate = "O sistema é rápido, seguro e funciona bem."
+
+        result = evaluate_gate(
+            "pt", sanitizado, candidate, size_baseline_text=pre_sanitizacao
+        )
+        self.assertTrue(result.accepted, result.reasons)
+
     def test_rejects_candidate_much_shorter_than_original(self):
         original = (
             "Primeira frase relevante aqui. Segunda frase com mais contexto "

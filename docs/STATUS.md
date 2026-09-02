@@ -12,12 +12,11 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
 - **CLI (`fatuus probe` / `fatuus clean`):** inspeção com diagnóstico visual de score sintético e exportação JSON.
 - **Camada 1 (motor agêntico Agno):** pipeline com agentes de cadência, anti-simetria e integridade semântica orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb`. Agente de watermark estatístico com ativação condicional. Gate determinístico de aceitação com retry. **Verificada em produção em 2026-09-02** contra o Gemini real (`gemini-3.7-flash`) — ver evidência abaixo.
   - **Limitações conhecidas:**
-    - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização.
-    - **Essa faixa de tamanho rejeita reescritas compactas/fiéis na prática**, não só reescritas ruins: no smoke test real de produção, o texto sanitizado (3 frases repetitivas) virou uma reescrita natural bem mais curta, e o gate recusou por estar a 0,38x do original — abaixo do piso de 0,7x. O pipeline caiu de volta no texto da Camada 0 (nunca pior que a entrada), mas isso significa que a Camada 1 hoje aceita reescritas que **crescem** em relação ao original, não as que resumem. Recalibrar a faixa é trabalho futuro, não um bug do fallback.
+    - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização, faixa `[0.3x, 1.4x]` (FAT-9, recalibrada em 2026-09-02 a partir do caso real de produção: uma fusão de 3 frases clichê repetidas em 1 frase natural media 0,33-0,38x e era rejeitada pelo piso antigo de 0,7x — compressão legítima de clichê, não perda de conteúdo). Segue sendo um proxy grosseiro, não similaridade semântica de verdade.
     - O retry é reamostragem, não retry guiado: cada tentativa recebe o mesmo texto de entrada, e os motivos de rejeição do gate não chegam a nenhum agente.
     - `agno[os]` traz `uvicorn` sem extras de performance (`uvicorn[standard]`) — aceitável para este teste, revisar se performance importar depois.
     - `/docs`, `/openapi.json` e `/redoc` do `AgentOS` continuam acessíveis sem autenticação — decisão deliberada: divulgam a superfície da API, não dado nenhum.
-- 49 testes, 100% passando (`pytest`; `python3 -m unittest discover` conta 42 — contagem de subtestes difere entre os dois runners).
+- 50 testes, 100% passando (`pytest`; `python3 -m unittest discover` conta menos — contagem de subtestes difere entre os dois runners).
 
 ## Evidência da verificação em produção (2026-09-02)
 

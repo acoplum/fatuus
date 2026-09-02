@@ -5,7 +5,7 @@ from typing import List
 
 from .detector import FatuusDetector
 
-WORD_COUNT_RATIO_MIN = 0.7
+WORD_COUNT_RATIO_MIN = 0.3
 WORD_COUNT_RATIO_MAX = 1.4
 
 

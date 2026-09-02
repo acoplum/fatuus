@@ -125,5 +125,19 @@ class TestBasicAuthMiddleware(unittest.TestCase):
             pass
 
 
+class TestFrontendRootRoute(unittest.TestCase):
+    """Regressão: `AgentOS(on_route_conflict="preserve_base_app")` precisa
+    manter a rota `GET /` definida em `fatuus.api` (o frontend) em vez da
+    `get_api_info` nativa do AgentOS — sem isso, `/` volta a devolver o JSON
+    de metadados da API em vez do `index.html` do frontend, silenciosamente
+    (o teste de auth não detecta isso, porque 401 sem credencial é idêntico
+    nos dois casos).
+    """
+
+    def test_root_route_is_the_frontend_index_not_agentos_default(self):
+        root_route = next(r for r in app.routes if getattr(r, "path", None) == "/")
+        self.assertEqual(root_route.name, "frontend_index")
+
+
 if __name__ == "__main__":
     unittest.main()

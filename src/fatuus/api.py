@@ -93,12 +93,15 @@ _agent_os = AgentOS(
 )
 app = _agent_os.get_app()
 
-# `check_dir=False` evita que a importação do módulo quebre em ambiente de
-# teste/dev sem o frontend buildado — sem o diretório, uma requisição a
-# "/assets/*" só recebe 404, não um erro de import. O build do Vite (Task 10)
-# usa `assetsDir` padrão e referencia os arquivos como `/assets/...` a partir
-# de `index.html`, então montar apenas este subpath não colide com nenhuma
-# rota do AgentOS (que não reivindica nada sob "/assets").
+# check_dir=False evita que a IMPORTAÇÃO do módulo quebre em ambiente
+# sem o frontend buildado (teste/dev). Uma requisição real a "/assets/*"
+# sem o diretório ainda derruba com 500 (Starlette valida no primeiro
+# request, não só na montagem) — aceitável porque em produção o
+# Dockerfile sempre gera frontend/dist/assets antes do container subir.
+# O build do Vite (Task 10) usa `assetsDir` padrão e referencia os
+# arquivos como `/assets/...` a partir de `index.html`, então montar
+# apenas este subpath não colide com nenhuma rota do AgentOS (que não
+# reivindica nada sob "/assets").
 app.mount(
     "/assets",
     StaticFiles(directory=f"{STATIC_DIR}/assets", check_dir=False),

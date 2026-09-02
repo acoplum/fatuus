@@ -10,18 +10,22 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
 
 - **Camada 0 (determinística):** normalizador de caracteres invisíveis (ZWSP, ZWNJ, ZWJ, BOM, marcadores de direção), métrica de *burstiness* (-1 a +1) sobre distribuição de comprimento de sentenças, dicionários de clichês sintéticos PT-BR/EN, sanitizador determinístico.
 - **CLI (`fatuus probe` / `fatuus clean`):** inspeção com diagnóstico visual de score sintético e exportação JSON.
-- **Camada 1 (motor agêntico Agno):** pipeline com agentes de cadência, anti-simetria e integridade semântica orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb`. Agente de watermark estatístico com ativação condicional. Gate determinístico de aceitação com retry. Roda ponta a ponta em teste (sanitizador → workflow → gate, com o modelo mockado); **não verificada em produção ainda** — ver abaixo.
+- **Camada 1 (motor agêntico Agno):** pipeline com agentes de cadência, anti-simetria e integridade semântica orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb`. Agente de watermark estatístico com ativação condicional. Gate determinístico de aceitação com retry. **Verificada em produção em 2026-09-02** contra o Gemini real (`gemini-3.7-flash`) — ver evidência abaixo.
   - **Limitações conhecidas:**
-    - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização, não contra o texto que a Camada 1 recebe.
+    - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização.
+    - **Essa faixa de tamanho rejeita reescritas compactas/fiéis na prática**, não só reescritas ruins: no smoke test real de produção, o texto sanitizado (3 frases repetitivas) virou uma reescrita natural bem mais curta, e o gate recusou por estar a 0,38x do original — abaixo do piso de 0,7x. O pipeline caiu de volta no texto da Camada 0 (nunca pior que a entrada), mas isso significa que a Camada 1 hoje aceita reescritas que **crescem** em relação ao original, não as que resumem. Recalibrar a faixa é trabalho futuro, não um bug do fallback.
     - O retry é reamostragem, não retry guiado: cada tentativa recebe o mesmo texto de entrada, e os motivos de rejeição do gate não chegam a nenhum agente.
     - `agno[os]` traz `uvicorn` sem extras de performance (`uvicorn[standard]`) — aceitável para este teste, revisar se performance importar depois.
-- 49 testes, 100% passando (`pytest`).
+    - `/docs`, `/openapi.json` e `/redoc` do `AgentOS` continuam acessíveis sem autenticação — decisão deliberada: divulgam a superfície da API, não dado nenhum.
+- 49 testes, 100% passando (`pytest`; `python3 -m unittest discover` conta 42 — contagem de subtestes difere entre os dois runners).
 
-## O que ainda não foi verificado em produção
+## Evidência da verificação em produção (2026-09-02)
 
-A Camada 1 **nunca rodou de ponta a ponta contra o Gemini em produção**, ao contrário do que este arquivo afirmava antes. O deploy de teste de 2026-09-02 subiu e respondeu, mas o texto do smoke test — `"É importante ressaltar que o sistema é robusto e escalável."` — sanitiza para uma frase só, com burstiness `0.0`: `_needs_layer1` devolve `False` e o pipeline pula a Camada 1 sem chamar o modelo nenhuma vez. Isso é reproduzível a partir do código como está. O que aquele smoke test provou foi a Camada 0 servida por HTTP.
+Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por request real, com autenticação:
 
-Verificar exige um redeploy e um smoke test com entrada que comprovadamente entre na Camada 1, guardando o JSON bruto da resposta: `layer1_attempts` diferente de zero e `cleaned_text` diferente de `layer0.cleaned_text`.
+- Rotas antes abertas (`/memories`, `/config`, `/health`) agora exigem Basic Auth — 401 sem credencial, 200 com.
+- `POST /clean` com texto que aciona a Camada 1 (3 frases com clichê repetido): `layer1_attempts: 3` (rodou as 3 tentativas de verdade, chamando o Gemini) e `layer1_accepted: false` — o gate rejeitou por variação de tamanho, e o `cleaned_text` devolvido foi o da Camada 0, exatamente como a invariante "nunca pior que a Camada 0" promete.
+- Isso comprova que a Camada 1 executa de ponta a ponta contra o Gemini real; não comprova que o gate aceita reescritas típicas — ver limitação acima.
 
 ## O que não funciona ainda
 
@@ -41,5 +45,5 @@ python3 -m fatuus.cli clean exemplos/exemplo_ia_pt.md --lang pt -o texto_limpo.m
 ## Onde está publicado
 
 - **Repositório:** GitHub público (`acoplum/fatuus`).
-- **Camada 1 (teste):** sem ambiente no ar. O deploy de teste de 2026-09-02 (Cloud Run, projeto `acoplum`, região `southamerica-east1`, revisão `fatuus-00001-pzh`) foi **apagado no mesmo dia**, como contenção do achado da revisão final: as mais de 100 rotas montadas pelo `AgentOS` estavam sem autenticação num serviço público. Redeploy só depois do fix revisado.
+- **Camada 1 (teste):** Cloud Run, projeto `acoplum`, região `southamerica-east1`, revisão `fatuus-00001-5z6`, URL `https://fatuus-571033381701.southamerica-east1.run.app` — deploy de 2026-09-02, pós-fix de segurança (a primeira revisão, `fatuus-00001-pzh`, foi apagada no mesmo dia como contenção: as mais de 100 rotas do `AgentOS` estavam sem autenticação num serviço público). Acesso via Basic Auth em todas as rotas.
 - **Pacote PyPI:** não publicado ainda.

@@ -19,22 +19,36 @@ O **Fatuus** (*do latim fatum / fatuus* — "o que foi proferido", "ilusório") 
 
 ## Instalação e Uso
 
-### Testes
+### Setup
+
 ```bash
-python3 -m unittest discover -s tests -p "test_*.py"
+pip install -e ".[serve,dev]"
+cp .env.example .env  # preencher GOOGLE_API_KEY, FATUUS_BASIC_AUTH_USER, FATUUS_BASIC_AUTH_PASSWORD
 ```
 
-### CLI
+### Testes
 
 ```bash
-# Analisar um arquivo markdown (gera diagnóstico e métricas)
+pytest
+```
+
+### CLI (Camada 0 — determinística, sem chave de API)
+
+```bash
 python3 -m fatuus.cli probe exemplos/exemplo_ia_pt.md --lang pt
-
-# Em inglês
-python3 -m fatuus.cli probe exemplos/exemplo_ia_en.md --lang en
-
-# Sanitizar e remover clichês determinísticos
 python3 -m fatuus.cli clean exemplos/exemplo_ia_pt.md --lang pt -o texto_limpo.md
+```
+
+### API (Camada 0 + Camada 1 — exige `GOOGLE_API_KEY`)
+
+```bash
+set -a; source .env; set +a
+uvicorn fatuus.api:app --port 8080
+# noutro terminal:
+curl -u "$FATUUS_BASIC_AUTH_USER:$FATUUS_BASIC_AUTH_PASSWORD" \
+  -X POST localhost:8080/clean \
+  -H 'content-type: application/json' \
+  -d '{"text": "É importante ressaltar que...", "lang": "pt"}'
 ```
 
 ### Como Biblioteca Python

@@ -21,17 +21,27 @@ class TextRequest(BaseModel):
     lang: str = "pt"
 
 
-base_app = FastAPI(title="Fatuus API", version="0.1.0")
+# A dependência de auth fica no app inteiro, não rota a rota: o
+# `AgentOS.get_app()` monta mais de 100 rotas próprias (memories, sessions,
+# migrations de schema) neste mesmo `base_app`, e o auth nativo do Agno é
+# no-op enquanto `OS_SECURITY_KEY` não estiver definida. Rotas incluídas
+# depois herdam `app.router.dependencies`, então declarar aqui cobre tudo
+# que o AgentOS montar. `tests/test_api.py` guarda isso por inventário de rotas.
+base_app = FastAPI(
+    title="Fatuus API",
+    version="0.1.0",
+    dependencies=[Depends(require_basic_auth)],
+)
 
 
 @base_app.post("/probe")
-def probe(payload: TextRequest, _user: str = Depends(require_basic_auth)) -> dict:
+def probe(payload: TextRequest) -> dict:
     detector = FatuusDetector(lang=payload.lang)
     return detector.analyze(payload.text)
 
 
 @base_app.post("/clean")
-def clean(payload: TextRequest, _user: str = Depends(require_basic_auth)) -> dict:
+def clean(payload: TextRequest) -> dict:
     sanitizer = FatuusSanitizer(lang=payload.lang)
     sanitized = sanitizer.clean(payload.text)
 

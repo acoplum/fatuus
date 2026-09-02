@@ -1,3 +1,129 @@
 .app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   font-family: system-ui, sans-serif;
+}
+
+.app__header {
+  padding: 12px 16px;
+  font-weight: 700;
+  border-bottom: 1px solid #ddd;
+}
+
+.app__panels {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 16px;
+  padding: 16px;
+}
+
+.app__report {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editor textarea {
+  flex: 1;
+  resize: none;
+  font-size: 14px;
+  padding: 8px;
+}
+
+.editor__counter {
+  font-size: 12px;
+  color: #666;
+  text-align: right;
+}
+
+.editor__counter--over {
+  color: #c33;
+  font-weight: 700;
+}
+
+.error-banner {
+  background: #fee;
+  border: 1px solid #c33;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.report-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metrics-bar {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+}
+
+.metrics-bar__item dt {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.metrics-bar__item dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.diff-view__removed {
+  color: #c33;
+  text-decoration: line-through;
+}
+
+.diff-view__added {
+  color: #2a2;
+  text-decoration: underline;
+}
+
+.heatmap-view mark {
+  background: #fdd;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.heatmap-view__summary {
+  font-size: 13px;
+  color: #333;
+}
+
+.burstiness-gauge__track {
+  position: relative;
+  height: 24px;
+  background: linear-gradient(to right, #c33, #eee, #2a2);
+  border-radius: 4px;
+  margin: 20px 8px;
+}
+
+.burstiness-gauge__marker {
+  position: absolute;
+  transform: translateX(-50%);
+  top: -20px;
+  font-size: 12px;
+}
+
+.burstiness-gauge__marker--after {
+  top: 22px;
+}
+
+.burstiness-gauge__labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
 }

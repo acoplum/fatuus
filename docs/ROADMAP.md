@@ -17,9 +17,9 @@
 
 Detalhe completo em [`features/camada-1-agno`](features/camada-1-agno/). Gate: pipeline aceita ou recusa um texto de teste conhecido (com clichê + baixa burstiness) sem regressão nos 7 testes da Fase 1.
 
-- [ ] **5. Workflow Agno com agentes de papel único**
+- [x] **5. Workflow Agno com agentes de papel único** — ✅ feito em 2026-09-02
   - Agente de Cadência → Agente Anti-Simetria → Agente de Integridade Semântica, orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb` por padrão no self-hosted.
-- [ ] **6. Agente de Watermark Estatístico**
+- [x] **6. Agente de Watermark Estatístico** — ✅ feito em 2026-09-02
   - Ativa condicionalmente quando a Camada 0 sinaliza indício de watermark de token-sampling. Depende de LLM (local ou cloud) — não é zero-cost, ao contrário da Camada 0.
 - [ ] **7. Gate determinístico de aceitação**
   - Reroda `FatuusDetector`/`FatuusSanitizer` sobre o output do pipeline. Rejeita clichê reintroduzido, burstiness que não melhorou, ou similaridade semântica abaixo de limiar. Retry com feedback até N tentativas; esgotado, devolve o texto original com aviso.

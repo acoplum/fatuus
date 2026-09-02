@@ -83,6 +83,20 @@ def frontend_index():
 # 4 agentes por requisição (pipeline.py), porque o texto e o idioma variam
 # a cada chamada. Registrar agentes fixos aqui fica para quando o frontend
 # (Fase 3) precisar dos endpoints nativos de chat/streaming do AgentOS.
+_CORS_ORIGINS_ENV = os.environ.get("FATUUS_CORS_ORIGINS")
+CORS_ALLOWED_ORIGINS = (
+    [orig.strip() for orig in _CORS_ORIGINS_ENV.split(",") if orig.strip()]
+    if _CORS_ORIGINS_ENV
+    else [
+        "https://fatuus-571033381701.southamerica-east1.run.app",
+        "https://fatuus-lnpwo6gq7a-rj.a.run.app",
+        "http://localhost:8080",
+        "http://localhost:8099",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:8099",
+    ]
+)
+
 _db = SqliteDb(db_file="/tmp/fatuus-agentos.db")
 _agent_os = AgentOS(
     description="Fatuus — Camada 0 + Camada 1",
@@ -90,6 +104,7 @@ _agent_os = AgentOS(
     db=_db,
     base_app=base_app,
     on_route_conflict="preserve_base_app",
+    cors_allowed_origins=CORS_ALLOWED_ORIGINS,
 )
 app = _agent_os.get_app()
 

@@ -139,5 +139,36 @@ class TestFrontendRootRoute(unittest.TestCase):
         self.assertEqual(root_route.name, "frontend_index")
 
 
+class TestCORSOrigins(unittest.TestCase):
+    """Regressão FAT-10: CORS restrito às origens permitidas."""
+
+    def test_unlisted_origin_is_not_allowed(self):
+        response = client.options(
+            "/config",
+            headers={"Origin": "https://evil.com", "Access-Control-Request-Method": "GET"},
+        )
+        self.assertIsNone(response.headers.get("access-control-allow-origin"))
+
+    def test_default_agno_origin_is_no_longer_allowed(self):
+        response = client.options(
+            "/config",
+            headers={"Origin": "https://agno.com", "Access-Control-Request-Method": "GET"},
+        )
+        self.assertIsNone(response.headers.get("access-control-allow-origin"))
+
+    def test_allowed_origin_is_permitted(self):
+        response = client.options(
+            "/config",
+            headers={
+                "Origin": "https://fatuus-571033381701.southamerica-east1.run.app",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(
+            response.headers.get("access-control-allow-origin"),
+            "https://fatuus-571033381701.southamerica-east1.run.app",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

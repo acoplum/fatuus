@@ -8,31 +8,15 @@ os.environ.setdefault("GOOGLE_API_KEY", "test-key-for-unit-tests")
 
 from fastapi.testclient import TestClient
 
+from starlette.websockets import WebSocketDisconnect
+
 from fatuus.api import MAX_TEXT_LENGTH, app
-from fatuus.auth import require_basic_auth
 from fatuus.gate import GateResult
 from fatuus.pipeline import PipelineResult
 
 AUTH = ("tester@example.com", "s3cret-test-value")
 
 client = TestClient(app)
-
-# Rotas de documentação geradas pelo próprio FastAPI: são `starlette.routing.Route`,
-# não carregam dependências e só expõem a superfície da API, não dados.
-DOC_PATHS = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
-
-
-def _carries_auth_dependency(route) -> bool:
-    dependant = getattr(route, "dependant", None)
-    if dependant is None:
-        return False
-    pending = [dependant]
-    while pending:
-        current = pending.pop()
-        if current.call is require_basic_auth:
-            return True
-        pending.extend(current.dependencies)
-    return False
 
 
 class TestProbeEndpoint(unittest.TestCase):
@@ -104,34 +88,36 @@ class TestInputSizeLimit(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class TestRouteAuthInventory(unittest.TestCase):
+class TestBasicAuthMiddleware(unittest.TestCase):
     """Regressão do achado Critical #1: rotas montadas pelo AgentOS sem auth.
 
-    Inclui a rota WebSocket `/workflows/ws`, que passa a falhar fechada:
-    `HTTPBasic` só aceita `Request`, então a dependência levanta antes do
-    handshake. Nenhum agente ou workflow é registrado no AgentOS hoje, então
-    essa rota não é usada — se a Fase 3 precisar dela, o auth de WebSocket
-    tem que ser escrito à parte.
+    A proteção migrou de `Depends` por rota para middleware ASGI (Camada 2):
+    `Depends` não cobre `Mount` (StaticFiles do frontend) nem a WebSocket do
+    AgentOS de forma explícita. O middleware roda antes do roteamento e
+    cobre tudo — rotas próprias, as rotas do AgentOS, WebSocket e os
+    estáticos.
     """
 
-    def test_every_mounted_route_carries_the_auth_dependency(self):
-        unprotected = [
-            f"{sorted(getattr(route, 'methods', []) or ['WS'])} {route.path}"
-            for route in app.routes
-            if route.path not in DOC_PATHS and not _carries_auth_dependency(route)
-        ]
-        self.assertEqual(unprotected, [], f"{len(unprotected)} rota(s) sem auth")
+    def test_rejects_unauthenticated_requests_to_every_known_surface(self):
+        self.assertEqual(client.post("/probe", json={}).status_code, 401)
+        self.assertEqual(client.post("/clean", json={}).status_code, 401)
+        self.assertEqual(client.get("/config").status_code, 401)
+        self.assertEqual(client.get("/sessions").status_code, 401)
+        self.assertEqual(client.post("/memories", json={}).status_code, 401)
+        self.assertEqual(client.get("/").status_code, 401)
 
-    def test_agentos_routes_reject_anonymous_requests(self):
-        rotas = (("GET", "/config"), ("GET", "/sessions"), ("POST", "/memories"))
-        for method, path in rotas:
-            with self.subTest(path=path):
-                response = client.request(method, path, json={})
-                self.assertEqual(response.status_code, 401)
-
-    def test_agentos_routes_accept_authenticated_requests(self):
+    def test_accepts_authenticated_requests(self):
         response = client.get("/config", auth=AUTH)
         self.assertEqual(response.status_code, 200)
+
+    def test_rejects_wrong_credentials(self):
+        response = client.get("/config", auth=("tester@example.com", "senha-errada"))
+        self.assertEqual(response.status_code, 401)
+
+    def test_websocket_route_rejects_unauthenticated_handshake(self):
+        with self.assertRaises(WebSocketDisconnect):
+            with client.websocket_connect("/workflows/ws"):
+                pass
 
 
 if __name__ == "__main__":

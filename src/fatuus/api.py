@@ -5,10 +5,10 @@ import os
 from agno.db.sqlite import SqliteDb
 from agno.models.google import Gemini
 from agno.os import AgentOS
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from .auth import require_basic_auth
+from .auth import BasicAuthMiddleware
 from .detector import FatuusDetector
 from .pipeline import HumanizationPipeline
 from .sanitizer import FatuusSanitizer
@@ -28,17 +28,8 @@ class TextRequest(BaseModel):
     lang: str = "pt"
 
 
-# A dependência de auth fica no app inteiro, não rota a rota: o
-# `AgentOS.get_app()` monta mais de 100 rotas próprias (memories, sessions,
-# migrations de schema) neste mesmo `base_app`, e o auth nativo do Agno é
-# no-op enquanto `OS_SECURITY_KEY` não estiver definida. Rotas incluídas
-# depois herdam `app.router.dependencies`, então declarar aqui cobre tudo
-# que o AgentOS montar. `tests/test_api.py` guarda isso por inventário de rotas.
-base_app = FastAPI(
-    title="Fatuus API",
-    version="0.1.0",
-    dependencies=[Depends(require_basic_auth)],
-)
+base_app = FastAPI(title="Fatuus API", version="0.1.0")
+base_app.add_middleware(BasicAuthMiddleware)
 
 
 @base_app.post("/probe")

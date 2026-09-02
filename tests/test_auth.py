@@ -1,42 +1,35 @@
+import base64
 import os
 import unittest
 
 os.environ["FATUUS_BASIC_AUTH_USER"] = "tester@example.com"
 os.environ["FATUUS_BASIC_AUTH_PASSWORD"] = "s3cret-test-value"
 
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
-
-from fatuus.auth import require_basic_auth
-
-app = FastAPI()
+from fatuus.auth import is_authorized
 
 
-@app.get("/protegido")
-def protegido(user: str = Depends(require_basic_auth)):
-    return {"user": user}
+def _basic_header(username: str, password: str) -> str:
+    token = base64.b64encode(f"{username}:{password}".encode()).decode()
+    return f"Basic {token}"
 
 
-client = TestClient(app)
+class TestIsAuthorized(unittest.TestCase):
+    def test_rejects_missing_header(self):
+        self.assertFalse(is_authorized(None))
 
+    def test_rejects_non_basic_scheme(self):
+        self.assertFalse(is_authorized("Bearer abc123"))
 
-class TestRequireBasicAuth(unittest.TestCase):
-    def test_rejects_missing_credentials(self):
-        response = client.get("/protegido")
-        self.assertEqual(response.status_code, 401)
+    def test_rejects_malformed_base64(self):
+        self.assertFalse(is_authorized("Basic not-valid-base64!!"))
 
     def test_rejects_wrong_password(self):
-        response = client.get(
-            "/protegido", auth=("tester@example.com", "senha-errada")
-        )
-        self.assertEqual(response.status_code, 401)
+        header = _basic_header("tester@example.com", "senha-errada")
+        self.assertFalse(is_authorized(header))
 
     def test_accepts_correct_credentials(self):
-        response = client.get(
-            "/protegido", auth=("tester@example.com", "s3cret-test-value")
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"user": "tester@example.com"})
+        header = _basic_header("tester@example.com", "s3cret-test-value")
+        self.assertTrue(is_authorized(header))
 
 
 if __name__ == "__main__":

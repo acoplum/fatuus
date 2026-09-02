@@ -115,9 +115,14 @@ class TestBasicAuthMiddleware(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_websocket_route_rejects_unauthenticated_handshake(self):
-        with self.assertRaises(WebSocketDisconnect):
+        with self.assertRaises(WebSocketDisconnect) as cm:
             with client.websocket_connect("/workflows/ws"):
                 pass
+        self.assertEqual(cm.exception.code, 4401)
+
+    def test_websocket_route_accepts_authenticated_handshake(self):
+        with client.websocket_connect("/workflows/ws", auth=AUTH):
+            pass
 
 
 if __name__ == "__main__":

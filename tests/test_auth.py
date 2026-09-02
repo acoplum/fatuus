@@ -31,6 +31,10 @@ class TestIsAuthorized(unittest.TestCase):
         header = _basic_header("tester@example.com", "s3cret-test-value")
         self.assertTrue(is_authorized(header))
 
+    def test_rejects_non_ascii_credentials_without_crashing(self):
+        header = _basic_header("usuário", "senhá")
+        self.assertFalse(is_authorized(header))
+
 
 if __name__ == "__main__":
     unittest.main()

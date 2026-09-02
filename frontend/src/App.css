@@ -81,6 +81,10 @@
   font-weight: 600;
 }
 
+.diff-view {
+  white-space: pre-wrap;
+}
+
 .diff-view__removed {
   color: #c33;
   text-decoration: line-through;
@@ -89,6 +93,10 @@
 .diff-view__added {
   color: #2a2;
   text-decoration: underline;
+}
+
+.heatmap-view__text {
+  white-space: pre-wrap;
 }
 
 .heatmap-view mark {

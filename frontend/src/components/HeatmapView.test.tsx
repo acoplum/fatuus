@@ -52,4 +52,18 @@ describe("HeatmapView", () => {
     expect(container.querySelectorAll("mark")).toHaveLength(1);
     expect(screen.queryByText(/"b"/)).not.toBeInTheDocument();
   });
+
+  it("highlights the correct substring when an emoji precedes the match", () => {
+    const textWithEmoji = "Olá 🚀 É importante ressaltar que o sistema funciona.";
+    const term = "É importante ressaltar que";
+    // start/end computed the way Python's re module would (code point index)
+    const codePoints = Array.from(textWithEmoji);
+    const start = codePoints.findIndex((_, i) => codePoints.slice(i, i + Array.from(term).length).join("") === term);
+    const end = start + Array.from(term).length;
+    const matches = [{ term, start, end, pattern: "x" }];
+
+    const { container } = render(<HeatmapView text={textWithEmoji} matches={matches} />);
+
+    expect(container.querySelector("mark")?.textContent).toBe(term);
+  });
 });

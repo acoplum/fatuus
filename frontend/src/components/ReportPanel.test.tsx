@@ -39,6 +39,12 @@ describe("ReportPanel", () => {
     const { container } = render(<ReportPanel report={report} />);
     expect(screen.getByText("42.0 → 3.0")).toBeInTheDocument();
     expect(container.querySelectorAll("del, ins").length).toBeGreaterThan(0);
+    // O clichê removido só existe no texto original: se DiffView trocasse
+    // before/after, o primeiro <del> não conteria esse trecho.
+    const firstDel = container.querySelector("del");
+    expect(firstDel?.textContent).toContain("ressaltar");
+    expect(report.originalText).toContain("ressaltar");
+    expect(report.clean.cleaned_text).not.toContain("ressaltar");
     expect(container.querySelectorAll("mark")).toHaveLength(1);
     expect(screen.getByText("antes: -0.75")).toBeInTheDocument();
   });

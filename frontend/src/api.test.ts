@@ -20,6 +20,7 @@ describe("api", () => {
       "/probe",
       expect.objectContaining({
         method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: "olá", lang: "pt" }),
       })
     );
@@ -40,6 +41,7 @@ describe("api", () => {
       "/clean",
       expect.objectContaining({
         method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: "texto", lang: "pt" }),
       })
     );

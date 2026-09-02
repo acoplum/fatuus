@@ -7,15 +7,18 @@
 
 O **Fatuus** (*do latim fatum / fatuus* — "o que foi proferido", "ilusório") é um kit de código aberto para identificar vícios de linguagem sintética (*slop*), remover marcas d'água estatísticas e recompor o ritmo orgânico (*burstiness*) de textos gerados por inteligência artificial.
 
-## Arquitetura em Duas Camadas
+## Arquitetura em Três Camadas
 
 1. **Camada 0 — Determinística (Zero-Cost, < 5ms):**
    - Detecção e remoção de caracteres invisíveis / zero-width (fingerprints).
    - Sanitização de clichês clássicos de LLM (*"é importante ressaltar"*, *"no cenário atual"*, *"mergulhar em"*, *"delve into"*, *"testament to"*).
    - Cálculo do índice estatístico de *Burstiness* (-1 a +1) sobre a variação do comprimento de sentenças.
 
-2. **Camada 1 — Agêntica com Agno (Em desenvolvimento):**
-   - Agentes de cadência e anti-simetria para quebra de paralelismos rígidos e reescrita semântica.
+2. **Camada 1 — Agêntica com Agno:**
+   - Agentes de cadência e anti-simetria para quebra de paralelismos rígidos e reescrita semântica, orquestrados via `AgentOS`. Verificada em produção contra o Gemini real (ver [`docs/STATUS.md`](docs/STATUS.md)).
+
+3. **Camada 2 — Frontend React:**
+   - Painel duplo (editor à esquerda, relatório à direita), com heatmap de termos sintéticos, diff unificado e régua de burstiness antes/depois. Implementada e verificada localmente (testes de frontend passando, build Docker validado); ainda não implantada no Cloud Run (ver [`docs/STATUS.md`](docs/STATUS.md)).
 
 ## Instalação e Uso
 

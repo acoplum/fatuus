@@ -23,6 +23,7 @@ function countByTerm(matches: SlopMatch[]): TermCount[] {
 }
 
 export function HeatmapView({ text, matches }: HeatmapViewProps) {
+  const codePoints = Array.from(text);
   const fragments: ReactNode[] = [];
   const accepted: SlopMatch[] = [];
   let cursor = 0;
@@ -32,14 +33,14 @@ export function HeatmapView({ text, matches }: HeatmapViewProps) {
       return;
     }
     if (match.start > cursor) {
-      fragments.push(text.slice(cursor, match.start));
+      fragments.push(codePoints.slice(cursor, match.start).join(""));
     }
-    fragments.push(<mark key={index}>{text.slice(match.start, match.end)}</mark>);
+    fragments.push(<mark key={index}>{codePoints.slice(match.start, match.end).join("")}</mark>);
     accepted.push(match);
     cursor = match.end;
   });
-  if (cursor < text.length) {
-    fragments.push(text.slice(cursor));
+  if (cursor < codePoints.length) {
+    fragments.push(codePoints.slice(cursor).join(""));
   }
 
   // A lista resumo conta só os matches efetivamente destacados: um match

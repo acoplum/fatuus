@@ -30,3 +30,4 @@ htmlcov/
 
 # Banco local do AgentOS
 *.db
+.superpowers/

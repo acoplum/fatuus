@@ -14,6 +14,13 @@ export function BurstinessGauge({ before, after }: BurstinessGaugeProps) {
 
   return (
     <div className="burstiness-gauge">
+      <div className="burstiness-gauge__header">
+        <div className="burstiness-gauge__title">Burstiness (Cadência e Ritmo das Sentenças)</div>
+        <div className="burstiness-gauge__hint">
+          Textos sintéticos tendem a sentenças de mesmo tamanho (próximo de -1.0). Textos naturais mesclam frases curtas e longas (&ge; 0.0).
+        </div>
+      </div>
+
       <div className="burstiness-gauge__track">
         <span
           className="burstiness-gauge__marker burstiness-gauge__marker--before"
@@ -30,8 +37,10 @@ export function BurstinessGauge({ before, after }: BurstinessGaugeProps) {
           ▲
         </span>
       </div>
+
       <div className="burstiness-gauge__labels">
         <span>antes: {before.toFixed(2)}</span>
+        <span className="burstiness-gauge__center-marker">equilíbrio (0.00)</span>
         <span>depois: {after.toFixed(2)}</span>
       </div>
     </div>

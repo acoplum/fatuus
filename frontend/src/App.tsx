@@ -31,14 +31,73 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="app__header">Fatuus</header>
-      <div className="app__panels">
+      <header className="app__header">
+        <div className="app__header-brand">
+          <div className="app__logo">F</div>
+          <div className="app__header-titles">
+            <div className="app__header-title-row">
+              <h1 className="app__title">Fatuus</h1>
+              <span className="badge badge--pill">Open Source · Apache-2.0</span>
+            </div>
+            <p className="app__tagline">
+              Desconstrução de marcas sintéticas (unslop) e recomposição de cadência de IA
+            </p>
+          </div>
+        </div>
+        <div className="app__header-info">
+          <div className="app__info-chip">
+            <span className="app__info-dot" />
+            Camada 0 (Determinística) + Camada 1 (Agno Agêntico)
+          </div>
+        </div>
+      </header>
+
+      <main className="app__panels">
         <Editor value={text} onChange={setText} onAnalyze={handleAnalyze} loading={loading} />
         <div className="app__report">
           {error && <ErrorBanner message={error} onRetry={handleAnalyze} />}
-          {report && <ReportPanel report={report} />}
+
+          {loading && (
+            <div className="card report-loading">
+              <div className="spinner" />
+              <h3>Higienizando texto...</h3>
+              <p>Executando Camada 0 (limpeza determinística) e Camada 1 (agentes de cadência com Gemini)...</p>
+            </div>
+          )}
+
+          {!report && !loading && !error && (
+            <div className="card report-empty">
+              <div className="report-empty__icon">✨</div>
+              <h3 className="report-empty__title">Aguardando texto para análise</h3>
+              <p className="report-empty__desc">
+                Cole um texto gerado por LLM no editor à esquerda e clique em <strong>Analisar</strong>.
+              </p>
+              <div className="report-empty__steps">
+                <div className="report-empty__step">
+                  <div className="report-empty__step-num">0</div>
+                  <div>
+                    <strong>Camada 0 (Determinística):</strong> Identifica clichês sintéticos (<em>"é importante ressaltar"</em>, <em>"mergulhar em"</em>) e remove caracteres invisíveis (zero-width).
+                  </div>
+                </div>
+                <div className="report-empty__step">
+                  <div className="report-empty__step-num">1</div>
+                  <div>
+                    <strong>Camada 1 (Agêntica):</strong> Agentes de anti-simetria quebram paralelismos robóticos e variam o tamanho dos períodos para elevar o <em>burstiness</em>.
+                  </div>
+                </div>
+                <div className="report-empty__step">
+                  <div className="report-empty__step-num">G</div>
+                  <div>
+                    <strong>Gate de Fidelidade:</strong> Avalia se a essência do texto original foi preservada sem cortes excessivos ou alucinações.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {report && !loading && <ReportPanel report={report} />}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

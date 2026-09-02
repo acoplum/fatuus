@@ -49,15 +49,27 @@ export function HeatmapView({ text, matches }: HeatmapViewProps) {
   const terms = countByTerm(accepted);
 
   return (
-    <div className="heatmap-view">
-      <p className="heatmap-view__text">{fragments}</p>
+    <div className="card heatmap-view">
+      <div className="card__header">
+        <h3 className="card__title">Marcas Sintéticas no Texto (Camada 0)</h3>
+        <p className="card__subtitle">
+          Expressões e clichês de LLM identificados no texto original antes da higienização.
+        </p>
+      </div>
+
       {terms.length > 0 && (
-        <ul className="heatmap-view__summary">
-          {terms.map(({ term, count }) => (
-            <li key={term}>{`"${term}" — ${count} ocorrência${count > 1 ? "s" : ""}`}</li>
-          ))}
-        </ul>
+        <div className="heatmap-view__summary-wrap">
+          <ul className="heatmap-view__summary">
+            {terms.map(({ term, count }) => (
+              <li key={term}>{`"${term}" — ${count} ocorrência${count > 1 ? "s" : ""}`}</li>
+            ))}
+          </ul>
+        </div>
       )}
+
+      <div className="heatmap-view__content">
+        <p className="heatmap-view__text">{fragments}</p>
+      </div>
     </div>
   );
 }

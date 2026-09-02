@@ -11,9 +11,34 @@ export class ApiError extends Error {
 }
 
 async function postJson<T>(path: string, text: string, lang: string): Promise<T> {
-  const response = await fetch(path, {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+
+  let targetUrl = path;
+  if (
+    typeof window !== "undefined" &&
+    (window.location?.href?.includes("@") || (typeof document !== "undefined" && document.baseURI?.includes("@")))
+  ) {
+    try {
+      const url = new URL(path, window.location.origin);
+      url.username = "";
+      url.password = "";
+      targetUrl = url.href;
+
+      const current = new URL(window.location.href);
+      if (current.username && current.password) {
+        const creds = btoa(`${current.username}:${current.password}`);
+        headers["authorization"] = `Basic ${creds}`;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  const response = await fetch(targetUrl, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify({ text, lang }),
   });
   if (!response.ok) {

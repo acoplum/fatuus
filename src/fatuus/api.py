@@ -1,11 +1,14 @@
 """App FastAPI/AgentOS da Camada 0 + Camada 1 do Fatuus."""
 
 import os
+from pathlib import Path
 
 from agno.db.sqlite import SqliteDb
 from agno.models.google import Gemini
 from agno.os import AgentOS
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .auth import BasicAuthMiddleware
@@ -55,15 +58,52 @@ def clean(payload: TextRequest) -> dict:
     }
 
 
+# Build do frontend (Camada 2): `npm run build` em frontend/ gera
+# frontend/dist/, que o Dockerfile copia para o mesmo caminho relativo
+# dentro da imagem.
+STATIC_DIR = os.environ.get("FATUUS_STATIC_DIR", "frontend/dist")
+
+
+# Registrada em `base_app`, antes de `AgentOS(...)` construir sua própria
+# rota `GET /` (que devolve metadados da API, não o frontend). Por padrão o
+# AgentOS resolve esse conflito de rota substituindo a nossa pela dele
+# (`on_route_conflict="preserve_agentos"`); por isso o construtor abaixo passa
+# `on_route_conflict="preserve_base_app"` explicitamente, para que a rota
+# definida aqui vença. Sem o build do frontend presente, devolve 404 em vez
+# de quebrar a importação do módulo.
+@base_app.get("/")
+def frontend_index():
+    index_path = Path(STATIC_DIR) / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(index_path)
+
+
 # Nenhum agente é registrado diretamente no AgentOS: a Camada 1 constrói os
 # 4 agentes por requisição (pipeline.py), porque o texto e o idioma variam
 # a cada chamada. Registrar agentes fixos aqui fica para quando o frontend
 # (Fase 3) precisar dos endpoints nativos de chat/streaming do AgentOS.
 _db = SqliteDb(db_file="/tmp/fatuus-agentos.db")
 _agent_os = AgentOS(
-    description="Fatuus — Camada 0 + Camada 1", agents=[], db=_db, base_app=base_app
+    description="Fatuus — Camada 0 + Camada 1",
+    agents=[],
+    db=_db,
+    base_app=base_app,
+    on_route_conflict="preserve_base_app",
 )
 app = _agent_os.get_app()
+
+# `check_dir=False` evita que a importação do módulo quebre em ambiente de
+# teste/dev sem o frontend buildado — sem o diretório, uma requisição a
+# "/assets/*" só recebe 404, não um erro de import. O build do Vite (Task 10)
+# usa `assetsDir` padrão e referencia os arquivos como `/assets/...` a partir
+# de `index.html`, então montar apenas este subpath não colide com nenhuma
+# rota do AgentOS (que não reivindica nada sob "/assets").
+app.mount(
+    "/assets",
+    StaticFiles(directory=f"{STATIC_DIR}/assets", check_dir=False),
+    name="frontend-assets",
+)
 
 
 if __name__ == "__main__":

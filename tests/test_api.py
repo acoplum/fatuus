@@ -123,7 +123,8 @@ class TestRouteAuthInventory(unittest.TestCase):
         self.assertEqual(unprotected, [], f"{len(unprotected)} rota(s) sem auth")
 
     def test_agentos_routes_reject_anonymous_requests(self):
-        for method, path in (("GET", "/config"), ("GET", "/sessions"), ("POST", "/memories")):
+        rotas = (("GET", "/config"), ("GET", "/sessions"), ("POST", "/memories"))
+        for method, path in rotas:
             with self.subTest(path=path):
                 response = client.request(method, path, json={})
                 self.assertEqual(response.status_code, 401)

@@ -41,7 +41,9 @@ def evaluate_gate(
     original_analysis = detector.analyze(original_text)
     candidate_analysis = detector.analyze(candidate_text)
     size_baseline_analysis = (
-        detector.analyze(size_baseline_text) if size_baseline_text else original_analysis
+        detector.analyze(size_baseline_text)
+        if size_baseline_text
+        else original_analysis
     )
 
     reasons: List[str] = []

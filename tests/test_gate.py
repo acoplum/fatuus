@@ -23,7 +23,9 @@ class TestEvaluateGate(unittest.TestCase):
             "ressaltar que o sistema é rápido. É importante ressaltar que o "
             "sistema é seguro."
         )
-        sanitizado = "o sistema funciona bem. o sistema é rápido. o sistema é seguro."
+        sanitizado = (
+            "o sistema funciona bem. o sistema é rápido. o sistema é seguro."
+        )
         candidate = (
             "O sistema funciona bem. É rápido, seguro, e resolveu um problema "
             "real que ninguém tinha atacado antes com essa profundidade."

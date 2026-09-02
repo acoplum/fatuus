@@ -21,7 +21,7 @@ Detalhe completo em [`features/camada-1-agno`](features/camada-1-agno/). Gate: p
   - Agente de Cadência → Agente Anti-Simetria → Agente de Integridade Semântica, orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb` por padrão no self-hosted.
 - [x] **6. Agente de Watermark Estatístico** — ✅ feito em 2026-09-02
   - Ativa condicionalmente quando a Camada 0 sinaliza indício de watermark de token-sampling. Depende de LLM (local ou cloud) — não é zero-cost, ao contrário da Camada 0.
-- [ ] **7. Gate determinístico de aceitação**
+- [x] **7. Gate determinístico de aceitação** — ✅ feito em 2026-09-02
   - Reroda `FatuusDetector`/`FatuusSanitizer` sobre o output do pipeline. Rejeita clichê reintroduzido, burstiness que não melhorou, ou similaridade semântica abaixo de limiar. Retry com feedback até N tentativas; esgotado, devolve o texto original com aviso.
 - [ ] **8. Suporte a Modelos Locais (Ollama / vLLM)**
   - Execução 100% offline sem envio de texto a APIs externas.

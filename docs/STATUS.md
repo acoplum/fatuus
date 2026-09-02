@@ -23,8 +23,9 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
 Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por request real, com autenticação:
 
 - Rotas antes abertas (`/memories`, `/config`, `/health`) agora exigem Basic Auth — 401 sem credencial, 200 com.
-- `POST /clean` com texto que aciona a Camada 1 (3 frases com clichê repetido): `layer1_attempts: 3` (rodou as 3 tentativas de verdade, chamando o Gemini) e `layer1_accepted: false` — o gate rejeitou por variação de tamanho, e o `cleaned_text` devolvido foi o da Camada 0, exatamente como a invariante "nunca pior que a Camada 0" promete.
-- Isso comprova que a Camada 1 executa de ponta a ponta contra o Gemini real; não comprova que o gate aceita reescritas típicas — ver limitação acima.
+- `POST /clean` com texto que aciona a Camada 1 (3 frases com clichê repetido): `layer1_attempts: 3` (rodou as 3 tentativas de verdade, chamando o Gemini) e `layer1_accepted: false` — o gate rejeitou por variação de tamanho (0,38x), e o `cleaned_text` devolvido foi o da Camada 0, exatamente como a invariante "nunca pior que a Camada 0" promete.
+
+**Após o fix da FAT-9** (revisão `fatuus-00003-9sm`), o mesmo texto de entrada foi reenviado: `layer1_accepted: true`, `layer1_attempts: 1`, `cleaned_text: "O sistema funciona bem. Além de rápido, oferece segurança."` — aceito de primeira, sem clichê, sem repetição. Confirma que a Camada 1 não só executa contra o Gemini real, mas também aceita uma reescrita típica depois da recalibração do piso.
 
 ## O que não funciona ainda
 
@@ -44,5 +45,5 @@ python3 -m fatuus.cli clean exemplos/exemplo_ia_pt.md --lang pt -o texto_limpo.m
 ## Onde está publicado
 
 - **Repositório:** GitHub público (`acoplum/fatuus`).
-- **Camada 1 (teste):** Cloud Run, projeto `acoplum`, região `southamerica-east1`, revisão `fatuus-00001-5z6`, URL `https://fatuus-571033381701.southamerica-east1.run.app` — deploy de 2026-09-02, pós-fix de segurança (a primeira revisão, `fatuus-00001-pzh`, foi apagada no mesmo dia como contenção: as mais de 100 rotas do `AgentOS` estavam sem autenticação num serviço público). Acesso via Basic Auth em todas as rotas.
+- **Camada 1 (teste):** Cloud Run, projeto `acoplum`, região `southamerica-east1`, revisão `fatuus-00003-9sm`, URL `https://fatuus-571033381701.southamerica-east1.run.app` — deploy de 2026-09-02, pós-fix de segurança e da FAT-9 (a primeira revisão, `fatuus-00001-pzh`, foi apagada no mesmo dia como contenção: as mais de 100 rotas do `AgentOS` estavam sem autenticação num serviço público). Acesso via Basic Auth em todas as rotas.
 - **Pacote PyPI:** não publicado ainda.

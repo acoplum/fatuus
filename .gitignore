@@ -23,3 +23,10 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Segredos locais
+.env
+.env.local
+
+# Banco local do AgentOS
+*.db

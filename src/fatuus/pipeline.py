@@ -1,8 +1,10 @@
 """Orquestração do pipeline agêntico da Camada 1."""
 
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from agno.run.base import RunStatus
 from agno.workflow.loop import Loop
 from agno.workflow.step import Step
 from agno.workflow.types import StepInput, StepOutput
@@ -40,11 +42,38 @@ def _needs_watermark_agent(analysis: Dict[str, Any]) -> bool:
     return analysis["invisible_char_count"] > 0
 
 
+def _response_text(response: Any) -> str:
+    """Texto utilizável de um `RunOutput` do Agno, ou vazio se falhou.
+
+    Numa falha o Agno não levanta: devolve `RunOutput` com `status=error` e
+    a mensagem da exceção dentro de `content` (`agno/agent/_run.py`). Ler
+    `content` sem checar o status entrega o texto do erro como se fosse a
+    reescrita do agente.
+    """
+    if getattr(response, "status", None) != RunStatus.completed:
+        return ""
+    content = getattr(response, "content", None)
+    if not isinstance(content, str) or not content.strip():
+        return ""
+    return content
+
+
+def _failed_step(name: str) -> StepOutput:
+    return StepOutput(
+        step_name=name,
+        content=None,
+        success=False,
+        error=f"agente {name} não devolveu texto utilizável",
+    )
+
+
 def _make_rewrite_step(name: str, agent: Any) -> Step:
     def _run(step_input: StepInput) -> StepOutput:
         current_text = step_input.previous_step_content or step_input.input or ""
-        response = agent.run(current_text)
-        return StepOutput(step_name=name, content=response.content, success=True)
+        text = _response_text(agent.run(current_text))
+        if not text:
+            return _failed_step(name)
+        return StepOutput(step_name=name, content=text, success=True)
 
     return Step(name=name, executor=_run, description=name)
 
@@ -57,20 +86,61 @@ def _make_integridade_step(name: str, agent: Any) -> Step:
             f"Texto original:\n{original_text}\n\n"
             f"Reescrita a revisar:\n{current_text}"
         )
-        response = agent.run(prompt)
-        return StepOutput(step_name=name, content=response.content, success=True)
+        text = _response_text(agent.run(prompt))
+        if not text:
+            return _failed_step(name)
+        return StepOutput(step_name=name, content=text, success=True)
 
     return Step(name=name, executor=_run, description=name)
+
+
+def _executed_steps(run_output: Any) -> List[Any]:
+    """Steps que de fato rodaram, achatando as iterações do `Loop`.
+
+    O workflow tem um único step de topo (o `Loop`), cujo `StepOutput.steps`
+    traz os outputs de todas as iterações concatenados.
+    """
+    steps: List[Any] = []
+    for result in getattr(run_output, "step_results", None) or []:
+        nested = getattr(result, "steps", None)
+        steps.extend(nested if nested else [result])
+    return steps
+
+
+def _count_iterations(run_output: Any, steps_per_iteration: int) -> int:
+    executed = len(_executed_steps(run_output))
+    if steps_per_iteration <= 0 or executed == 0:
+        return 1
+    return math.ceil(executed / steps_per_iteration)
+
+
+def _workflow_text(run_output: Any) -> str:
+    if getattr(run_output, "status", None) == RunStatus.error:
+        return ""
+    content = getattr(run_output, "content", None)
+    if not isinstance(content, str) or not content.strip():
+        return ""
+    return content
+
+
+def _failure_reason(run_output: Any) -> str:
+    errors = [
+        step.error
+        for step in _executed_steps(run_output)
+        if not getattr(step, "success", True) and getattr(step, "error", None)
+    ]
+    detail = f": {'; '.join(dict.fromkeys(errors))}" if errors else ""
+    return f"execução da Camada 1 falhou{detail}"
 
 
 class HumanizationPipeline:
     """Pipeline de agentes Agno da Camada 1, com gate determinístico final.
 
-    Limitação conhecida: `attempts` é sempre 1 quando o pipeline roda,
-    porque o retry entre tentativas é gerenciado internamente pelo `Loop`
-    do Agno (via `end_condition`) e este módulo não expõe a contagem real
-    de iterações do `WorkflowRunOutput`. Refinar quando houver necessidade
-    real de expor isso na API.
+    Limitação conhecida: o retry é reamostragem, não retry guiado. O `Loop`
+    roda com `forward_iteration_output=False`, então cada iteração recebe o
+    mesmo texto de entrada e os motivos de rejeição do gate não chegam a
+    nenhum agente — a única variação entre tentativas é a amostragem do
+    modelo.
     """
 
     def __init__(
@@ -142,8 +212,18 @@ class HumanizationPipeline:
             )
 
         workflow = self._build_workflow(_needs_watermark_agent(original_analysis))
+        steps_per_iteration = len(workflow.steps[0].steps)
         run_output = workflow.run(input=sanitized_text)
-        candidate_text = getattr(run_output, "content", None) or sanitized_text
+        attempts = _count_iterations(run_output, steps_per_iteration)
+        candidate_text = _workflow_text(run_output)
+
+        if not candidate_text:
+            return PipelineResult(
+                final_text=sanitized_text,
+                accepted=False,
+                attempts=attempts,
+                gate=GateResult(accepted=False, reasons=[_failure_reason(run_output)]),
+            )
 
         gate = evaluate_gate(
             self.lang,
@@ -154,9 +234,15 @@ class HumanizationPipeline:
 
         if gate.accepted:
             return PipelineResult(
-                final_text=candidate_text, accepted=True, attempts=1, gate=gate
+                final_text=candidate_text,
+                accepted=True,
+                attempts=attempts,
+                gate=gate,
             )
 
         return PipelineResult(
-            final_text=sanitized_text, accepted=False, attempts=1, gate=gate
+            final_text=sanitized_text,
+            accepted=False,
+            attempts=attempts,
+            gate=gate,
         )

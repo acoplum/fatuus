@@ -1,0 +1,13 @@
+{
+  "cla": "CLA.md",
+  "versao": "0.1",
+  "nota": "Cada entrada registra quem aceitou o CLA, com o comentário que serviu de aceite. Gerado pelo fluxo; não editar à mão.",
+  "assinaturas": [
+    {
+      "login": "waldirjunior",
+      "em": "2026-09-02T00:00:00Z",
+      "referencia": "titular do projeto",
+      "versao_cla": "0.1"
+    }
+  ]
+}

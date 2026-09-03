@@ -1,0 +1,53 @@
+name: CLA
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target' || (github.event.issue.pull_request && contains(github.event.comment.body, 'Li e aceito o CLA da Acoplum'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Registrar aceite, quando o comentário for o aceite
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTOR: ${{ github.event.comment.user.login }}
+          REF: ${{ github.event.comment.html_url }}
+        run: |
+          python3 .github/cla/verificar.py registrar "$AUTOR" "$REF"
+          if ! git diff --quiet; then
+            git config user.name "acoplum-cla"
+            git config user.email "cla@acoplum.com"
+            git commit -aqm "chore(cla): registra aceite de $AUTOR"
+            git push
+          fi
+
+      - name: Conferir assinatura do autor do pull request
+        env:
+          AUTOR: ${{ github.event.pull_request.user.login || github.event.issue.user.login }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          if python3 .github/cla/verificar.py verificar "$AUTOR"; then exit 0; fi
+          gh pr comment "$PR" --body "Olá @$AUTOR — obrigado pela contribuição.
+
+          Antes de a gente poder integrar, é preciso aceitar o [CLA](../blob/main/CLA.md). Ele existe por um motivo prático: sem ele, este código não pode ser sublicenciado depois, e corrigir isso exigiria localizar cada pessoa que contribuiu.
+
+          Para aceitar, comente **exatamente** nesta thread:
+
+          \`Li e aceito o CLA da Acoplum\`
+
+          O aceite fica registrado em \`.github/cla/assinaturas.json\`, e esta verificação passa a aprovar automaticamente." || true
+          exit 1

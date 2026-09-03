@@ -1,11 +1,9 @@
 """Orquestração do pipeline agêntico da Camada 1."""
 
-import math
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from agno.run.base import RunStatus
-from agno.workflow.loop import Loop
 from agno.workflow.step import Step
 from agno.workflow.types import StepInput, StepOutput
 from agno.workflow.workflow import Workflow
@@ -21,6 +19,22 @@ from .gate import GateResult, evaluate_gate
 
 DEFAULT_MAX_ITERATIONS = 3
 
+# Densidade de travessão que, sozinha, justifica acionar a Camada 1.
+EM_DASH_TRIGGER_PER_100_WORDS = 1.5
+
+_FEEDBACK_TEMPLATES = {
+    "pt": (
+        "\n\n[Revisão automática: a reescrita anterior deste texto foi "
+        "rejeitada pelos motivos: {reasons}. Produza uma reescrita que evite "
+        "esses problemas. Devolva só o texto reescrito.]"
+    ),
+    "en": (
+        "\n\n[Automated review: the previous rewrite of this text was "
+        "rejected for: {reasons}. Produce a rewrite that avoids these "
+        "problems. Return only the rewritten text.]"
+    ),
+}
+
 
 @dataclass
 class PipelineResult:
@@ -34,7 +48,10 @@ def _needs_layer1(analysis: Dict[str, Any]) -> bool:
     return (
         analysis["slop_count"] > 0
         or analysis["invisible_char_count"] > 0
+        or analysis["structural_count"] > 0
         or analysis["sentence_metrics"]["burstiness"] < 0
+        or analysis["typography"]["em_dash_per_100_words"]
+        > EM_DASH_TRIGGER_PER_100_WORDS
     )
 
 
@@ -67,10 +84,11 @@ def _failed_step(name: str) -> StepOutput:
     )
 
 
-def _make_rewrite_step(name: str, agent: Any) -> Step:
+def _make_rewrite_step(name: str, agent: Any, feedback: str = "") -> Step:
     def _run(step_input: StepInput) -> StepOutput:
         current_text = step_input.previous_step_content or step_input.input or ""
-        text = _response_text(agent.run(current_text))
+        prompt = f"{current_text}{feedback}" if feedback else current_text
+        text = _response_text(agent.run(prompt))
         if not text:
             return _failed_step(name)
         return StepOutput(step_name=name, content=text, success=True)
@@ -95,23 +113,12 @@ def _make_integridade_step(name: str, agent: Any) -> Step:
 
 
 def _executed_steps(run_output: Any) -> List[Any]:
-    """Steps que de fato rodaram, achatando as iterações do `Loop`.
-
-    O workflow tem um único step de topo (o `Loop`), cujo `StepOutput.steps`
-    traz os outputs de todas as iterações concatenados.
-    """
+    """Steps que de fato rodaram, achatando resultados compostos."""
     steps: List[Any] = []
     for result in getattr(run_output, "step_results", None) or []:
         nested = getattr(result, "steps", None)
         steps.extend(nested if nested else [result])
     return steps
-
-
-def _count_iterations(run_output: Any, steps_per_iteration: int) -> int:
-    executed = len(_executed_steps(run_output))
-    if steps_per_iteration <= 0 or executed == 0:
-        return 1
-    return math.ceil(executed / steps_per_iteration)
 
 
 def _workflow_text(run_output: Any) -> str:
@@ -136,11 +143,11 @@ def _failure_reason(run_output: Any) -> str:
 class HumanizationPipeline:
     """Pipeline de agentes Agno da Camada 1, com gate determinístico final.
 
-    Limitação conhecida: o retry é reamostragem, não retry guiado. O `Loop`
-    roda com `forward_iteration_output=False`, então cada iteração recebe o
-    mesmo texto de entrada e os motivos de rejeição do gate não chegam a
-    nenhum agente — a única variação entre tentativas é a amostragem do
-    modelo.
+    O retry é guiado: a partir da segunda tentativa, os motivos de rejeição
+    do gate são anexados ao prompt dos agentes de reescrita (cadência,
+    anti-simetria e watermark), transformando a reamostragem em correção
+    dirigida. O agente de integridade semântica não recebe o feedback — o
+    papel dele é comparar original e reescrita, não atacar os motivos.
     """
 
     def __init__(
@@ -153,16 +160,20 @@ class HumanizationPipeline:
         self.lang = lang
         self.max_iterations = max_iterations
         self.detector = FatuusDetector(lang=lang)
-        self._original_text = ""
-        self._size_baseline_text = ""
 
-    def _build_workflow(self, needs_watermark: bool) -> Workflow:
+    def _feedback_prompt(self, reasons: List[str]) -> str:
+        lang_key = "pt" if self.lang.lower().startswith("pt") else "en"
+        return _FEEDBACK_TEMPLATES[lang_key].format(reasons="; ".join(reasons))
+
+    def _build_workflow(self, needs_watermark: bool, feedback: str = "") -> Workflow:
         steps: List[Step] = [
             _make_rewrite_step(
-                "cadencia", build_cadencia_agent(self.model, self.lang)
+                "cadencia", build_cadencia_agent(self.model, self.lang), feedback
             ),
             _make_rewrite_step(
-                "anti_simetria", build_anti_simetria_agent(self.model, self.lang)
+                "anti_simetria",
+                build_anti_simetria_agent(self.model, self.lang),
+                feedback,
             ),
             _make_integridade_step(
                 "integridade_semantica",
@@ -174,25 +185,10 @@ class HumanizationPipeline:
                 _make_rewrite_step(
                     "watermark_estatistico",
                     build_watermark_agent(self.model, self.lang),
+                    feedback,
                 )
             )
-
-        def _gate_end_condition(outputs: List[StepOutput]) -> bool:
-            candidate_text = (outputs[-1].content if outputs else "") or ""
-            return evaluate_gate(
-                self.lang,
-                self._original_text,
-                candidate_text,
-                size_baseline_text=self._size_baseline_text,
-            ).accepted
-
-        loop = Loop(
-            name="humanizacao_loop",
-            steps=steps,
-            max_iterations=self.max_iterations,
-            end_condition=_gate_end_condition,
-        )
-        return Workflow(name="fatuus_camada1", steps=[loop])
+        return Workflow(name="fatuus_camada1", steps=steps)
 
     def run(self, sanitized_text: str, original_text: str = "") -> PipelineResult:
         """Executa a Camada 1 sobre um texto já limpo pela Camada 0.
@@ -201,8 +197,6 @@ class HumanizationPipeline:
         razão de tamanho do gate contra o próprio texto sanitizado — ver
         `evaluate_gate`.
         """
-        self._original_text = sanitized_text
-        self._size_baseline_text = original_text
         original_analysis = self.detector.analyze(sanitized_text)
 
         if not _needs_layer1(original_analysis):
@@ -211,38 +205,41 @@ class HumanizationPipeline:
                 final_text=sanitized_text, accepted=True, attempts=0, gate=gate
             )
 
-        workflow = self._build_workflow(_needs_watermark_agent(original_analysis))
-        steps_per_iteration = len(workflow.steps[0].steps)
-        run_output = workflow.run(input=sanitized_text)
-        attempts = _count_iterations(run_output, steps_per_iteration)
-        candidate_text = _workflow_text(run_output)
+        needs_watermark = _needs_watermark_agent(original_analysis)
+        feedback = ""
+        last_gate = GateResult(accepted=False, reasons=["Camada 1 não executou"])
 
-        if not candidate_text:
-            return PipelineResult(
-                final_text=sanitized_text,
-                accepted=False,
-                attempts=attempts,
-                gate=GateResult(accepted=False, reasons=[_failure_reason(run_output)]),
+        for attempt in range(1, self.max_iterations + 1):
+            workflow = self._build_workflow(needs_watermark, feedback)
+            run_output = workflow.run(input=sanitized_text)
+            candidate_text = _workflow_text(run_output)
+
+            if not candidate_text:
+                last_gate = GateResult(
+                    accepted=False, reasons=[_failure_reason(run_output)]
+                )
+                feedback = ""
+                continue
+
+            gate = evaluate_gate(
+                self.lang,
+                sanitized_text,
+                candidate_text,
+                size_baseline_text=original_text,
             )
-
-        gate = evaluate_gate(
-            self.lang,
-            sanitized_text,
-            candidate_text,
-            size_baseline_text=original_text,
-        )
-
-        if gate.accepted:
-            return PipelineResult(
-                final_text=candidate_text,
-                accepted=True,
-                attempts=attempts,
-                gate=gate,
-            )
+            if gate.accepted:
+                return PipelineResult(
+                    final_text=candidate_text,
+                    accepted=True,
+                    attempts=attempt,
+                    gate=gate,
+                )
+            last_gate = gate
+            feedback = self._feedback_prompt(gate.reasons)
 
         return PipelineResult(
             final_text=sanitized_text,
             accepted=False,
-            attempts=attempts,
-            gate=gate,
+            attempts=self.max_iterations,
+            gate=last_gate,
         )

@@ -43,7 +43,7 @@ class TestHumanizationPipeline(unittest.TestCase):
     def test_build_workflow_includes_watermark_step_when_needed(self):
         pipeline = HumanizationPipeline(self.model, lang="pt")
         workflow = pipeline._build_workflow(needs_watermark=True)
-        step_names = [step.name for step in workflow.steps[0].steps]
+        step_names = [step.name for step in workflow.steps]
         self.assertEqual(
             step_names,
             [
@@ -57,7 +57,7 @@ class TestHumanizationPipeline(unittest.TestCase):
     def test_build_workflow_excludes_watermark_step_by_default(self):
         pipeline = HumanizationPipeline(self.model, lang="pt")
         workflow = pipeline._build_workflow(needs_watermark=False)
-        step_names = [step.name for step in workflow.steps[0].steps]
+        step_names = [step.name for step in workflow.steps]
         self.assertEqual(
             step_names, ["cadencia", "anti_simetria", "integridade_semantica"]
         )
@@ -186,6 +186,30 @@ class TestSanitizerToPipelineIntegration(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertEqual(result.attempts, 3)
         self.assertEqual(mock_agent_run.call_count, 9)
+
+    @patch("agno.agent.Agent.run")
+    def test_retry_is_guided_by_the_gate_reasons(self, mock_agent_run):
+        """FAT-8: a partir da 2ª tentativa, os motivos de rejeição do gate
+        chegam aos agentes de reescrita anexados ao prompt."""
+        mock_agent_run.return_value = RunOutput(
+            content=BAD_CANDIDATE, status=RunStatus.completed
+        )
+        pipeline = HumanizationPipeline(self.model, lang="pt", max_iterations=2)
+
+        pipeline.run(
+            self.sanitized["cleaned_text"], original_text=ORIGINAL_WITH_SLOP
+        )
+
+        prompts = [call.args[0] for call in mock_agent_run.call_args_list]
+        first_attempt = prompts[:3]
+        second_attempt = prompts[3:]
+        self.assertFalse(
+            any("Revisão automática" in p for p in first_attempt), first_attempt
+        )
+        self.assertTrue(
+            any("Revisão automática" in p and "clichê" in p for p in second_attempt),
+            second_attempt,
+        )
 
     @patch("agno.agent.Agent.run")
     def test_reports_failure_instead_of_using_the_agent_error_as_text(

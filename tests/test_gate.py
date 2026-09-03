@@ -82,6 +82,27 @@ class TestEvaluateGate(unittest.TestCase):
         )
         self.assertTrue(result.accepted, result.reasons)
 
+    def test_rejects_candidate_that_adds_structural_pattern(self):
+        original = "O sistema é rápido. Ele também protege os dados de todos."
+        candidate = (
+            "Não se trata de velocidade, mas de proteger os dados de todos "
+            "com a rapidez que o time construiu ao longo do tempo."
+        )
+        result = evaluate_gate("pt", original, candidate)
+        self.assertFalse(result.accepted)
+        self.assertTrue(any("estrutural" in r for r in result.reasons), result.reasons)
+
+    def test_healthy_burstiness_only_needs_to_not_get_worse(self):
+        # Original com burstiness positiva: exigir melhora estrita rejeitaria
+        # reescritas que só corrigem clichê sem mexer no ritmo.
+        original = (
+            "Sim. Não. A arquitetura inteira foi reescrita do zero depois de "
+            "semanas de análise cuidadosa feita pelo time que conhecia cada "
+            "detalhe do sistema."
+        )
+        result = evaluate_gate("pt", original, original)
+        self.assertTrue(result.accepted, result.reasons)
+
     def test_rejects_candidate_much_shorter_than_original(self):
         original = (
             "Primeira frase relevante aqui. Segunda frase com mais contexto "

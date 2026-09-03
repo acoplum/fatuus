@@ -7,6 +7,7 @@ from .detector import FatuusDetector
 
 WORD_COUNT_RATIO_MIN = 0.3
 WORD_COUNT_RATIO_MAX = 1.4
+BURSTINESS_TOLERANCE = 0.1
 
 
 @dataclass
@@ -59,11 +60,27 @@ def evaluate_gate(
             f"{candidate_analysis['invisible_char_count']}"
         )
 
+    if candidate_analysis["structural_count"] > original_analysis["structural_count"]:
+        reasons.append(
+            "padrão estrutural sintético aumentou: "
+            f"{original_analysis['structural_count']} -> "
+            f"{candidate_analysis['structural_count']}"
+        )
+
+    # Burstiness negativa era o problema: a reescrita precisa melhorar.
+    # Burstiness já saudável não precisa subir mais — basta não piorar além
+    # da tolerância, senão o gate rejeita reescritas que só corrigem clichê
+    # ou padrão estrutural sem mexer no ritmo.
     original_burstiness = original_analysis["sentence_metrics"]["burstiness"]
     candidate_burstiness = candidate_analysis["sentence_metrics"]["burstiness"]
-    if candidate_burstiness <= original_burstiness:
+    if original_burstiness < 0:
+        if candidate_burstiness <= original_burstiness:
+            reasons.append(
+                f"burstiness não melhorou: {original_burstiness} -> {candidate_burstiness}"
+            )
+    elif candidate_burstiness < original_burstiness - BURSTINESS_TOLERANCE:
         reasons.append(
-            f"burstiness não melhorou: {original_burstiness} -> {candidate_burstiness}"
+            f"burstiness piorou: {original_burstiness} -> {candidate_burstiness}"
         )
 
     baseline_words = size_baseline_analysis["word_count"]

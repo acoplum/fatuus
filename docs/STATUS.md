@@ -8,20 +8,21 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
 
 ## O que já funciona
 
-- **Camada 0 (determinística):** normalizador de caracteres invisíveis (ZWSP, ZWNJ, ZWJ, BOM, marcadores de direção), métrica de *burstiness* (-1 a +1) sobre distribuição de comprimento de sentenças, dicionários de clichês sintéticos PT-BR/EN, sanitizador determinístico.
+- **Camada 0 (determinística):** normalizador de caracteres invisíveis (ZWSP, ZWNJ, ZWJ, BOM, soft hyphen, word joiner, controles bidi LRE/RLE/PDF/LRO/RLO e isolates, operadores matemáticos invisíveis, seletores de variação fora de emoji), normalização tipográfica (aspas curvas, reticências, espaços disfarçados, separadores de linha Unicode), métrica de *burstiness* (-1 a +1), métricas de travessão e formatação Markdown (bullets com negrito, emoji em heading), dicionários de clichês sintéticos PT-BR/EN (36 padrões PT, 35 EN), padrões estruturais do "Signs of AI writing" detectados separadamente, sanitizador determinístico com fix de capitalização em início de sentença. **Assimetria detector↔sanitizer fechada:** todo clichê detectado tem substituição, garantido por teste de invariante.
 - **CLI (`fatuus probe` / `fatuus clean`):** inspeção com diagnóstico visual de score sintético e exportação JSON.
-- **Camada 1 (motor agêntico Agno):** pipeline com agentes de cadência, anti-simetria e integridade semântica orquestrados via `AgentOS`, expostos em FastAPI com `SqliteDb`. Agente de watermark estatístico com ativação condicional. Gate determinístico de aceitação com retry. **Verificada em produção em 2026-09-02** contra o Gemini real (`gemini-3.7-flash`) — ver evidência abaixo.
+- **Skill para agentes:** [`SKILL.md`](../SKILL.md) na raiz, formato das referências (`blader/humanizer`) — Camada 0 via CLI + guia de reescrita + gate como checklist.
+- **CLA:** [`CLA.md`](../CLA.md) + verificação automática (`.github/workflows/cla.yml`, mecanismo do `spec-registro-decisao`). Ativa no primeiro push.
+- **Camada 1 (motor agêntico Agno):** pipeline com agentes de cadência, anti-simetria e integridade semântica, expostos em FastAPI com `SqliteDb`. Agente de watermark estatístico com ativação condicional. Gate determinístico de aceitação com **retry guiado** (FAT-8): a partir da 2ª tentativa os motivos de rejeição do gate são anexados ao prompt dos agentes de reescrita. Provedores de modelo: `gemini` (nuvem), `ollama` e `vllm` (locais, sem envio de texto a API externa), via `FATUUS_MODEL_PROVIDER`. **Verificada em produção em 2026-09-02** contra o Gemini real (`gemini-3.7-flash`) — ver evidência abaixo (anterior à expansão da Camada 0 e ao retry guiado).
   - **Limitações conhecidas:**
     - Gate de fidelidade v1 usa proxy de variação de tamanho de texto em lugar de similaridade semântica real — não há embeddings nesta versão. A razão é medida contra o texto pré-sanitização, faixa `[0.3x, 1.4x]` (FAT-9, recalibrada em 2026-09-02 a partir do caso real de produção: uma fusão de 3 frases clichê repetidas em 1 frase natural media 0,33-0,38x e era rejeitada pelo piso antigo de 0,7x — compressão legítima de clichê, não perda de conteúdo). Segue sendo um proxy grosseiro, não similaridade semântica de verdade.
-    - O retry é reamostragem, não retry guiado: cada tentativa recebe o mesmo texto de entrada, e os motivos de rejeição do gate não chegam a nenhum agente.
+    - Ollama/vLLM verificados por teste unitário; falta smoke test contra um servidor local real.
     - `agno[os]` traz `uvicorn` sem extras de performance (`uvicorn[standard]`) — aceitável para este teste, revisar se performance importar depois.
-- **Camada 2 (frontend React):** painel duplo com cards modulares, visualizador de texto com abas (`Diff`, `Texto Limpo`, `Lado a Lado`, `Original`), botão de cópia com feedback, heatmap isolado com pills de contagem e card explicativo do pipeline. Servido como build estático pelo mesmo FastAPI app do `AgentOS`, em `/`. Validação de limite de 20 000 caracteres no cliente. Testado e **implantado com sucesso no Cloud Run** (revisão `fatuus-00004-fvz`).
+- **Camada 2 (frontend React):** painel duplo com cards modulares, visualizador de texto com abas (`Diff`, `Texto Limpo`, `Lado a Lado`, `Original`), botão de cópia com feedback, heatmap com pills de contagem — incluindo padrões estruturais com cor própria — e card explicativo do pipeline. Servido como build estático pelo mesmo FastAPI app do `AgentOS`, em `/`. Validação de limite de 20 000 caracteres no cliente. Testado e **implantado com sucesso no Cloud Run** (revisão `fatuus-00004-fvz`, anterior à expansão da Camada 0).
   - **Limitações conhecidas:** sem streaming (spinner simples até a resposta final), sem histórico de análises anteriores, sem multiusuário (Basic Auth global, uma credencial por instância self-hosted).
   - **Migração do middleware de auth:** Basic Auth saiu de um `Depends` do FastAPI — que nunca cobria o `Mount` do Starlette usado para servir o frontend, nem rotas WebSocket — para um middleware ASGI puro (`BasicAuthMiddleware`, em `src/fatuus/auth.py`), cobrindo HTTP e WebSocket por igual. Isso fechou de passagem o gap de `/docs`, `/openapi.json` e `/redoc` sem autenticação, documentado antes nesta página como residual aceito. A revisão de segurança da migração também achou e corrigiu uma regressão real: credencial não-ASCII no header `Authorization` derrubava `secrets.compare_digest` com `TypeError` não tratado, virando 500 em vez de 401 limpo — corrigido comparando bytes UTF-8.
   - **Conflito de rota com o `AgentOS`:** `AgentOS.get_app()` reivindica `GET /` por padrão para sua própria rota JSON de metadados, o que sombrearia o `index.html` do frontend. Resolvido com o parâmetro documentado `on_route_conflict="preserve_base_app"` do construtor do `AgentOS` (mecanismo suportado, não workaround), com teste de regressão (`TestFrontendRootRoute`) guardando contra uma versão futura do `agno` reverter o comportamento.
-  - **CORS restrito (FAT-10):** `AgentOS` configurado com `cors_allowed_origins` explícito limitando à URL real do Cloud Run e localhost, removendo allowlist default que permitia domínios externos como `agno.com`.
-  - **Verificação:** 59 testes de backend passando (`pytest`), 37 testes de frontend passando (`npm test`, dentro de `frontend/`), build Docker multi-stage implantado no Cloud Run.
-- 59 testes de backend, 100% passando (`pytest`).
+  - **CORS restrito (FAT-10):** `AgentOS` configurado com `cors_allowed_origins` explícito. Em 2026-09-02 as URLs de produção **saíram do código** (repo público não carrega infra): o default cobre só localhost e o deploy define `FATUUS_CORS_ORIGINS` — pendência FAT-12 para o próximo deploy.
+  - **Verificação:** 75 testes de backend passando (`pytest`), 38 testes de frontend passando (`npm test`, dentro de `frontend/`), build do frontend (`tsc` + `vite`) e pacote PyPI (`python -m build` + `twine check`) validados.
 
 ## Evidência da verificação em produção (2026-09-02)
 
@@ -35,7 +36,9 @@ Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por req
 ## O que não funciona ainda
 
 - **Suporte a idiomas além de PT-BR/EN:** fora de escopo nesta fase — cada idioma exige dicionário de marcadores próprio, não há heurística universal.
-- **Empacotamento PyPI:** planejado, não feito.
+- **Publicação no PyPI:** pacote construído e validado (`twine check`), falta a credencial do titular (FAT-11).
+- **CI:** sem GitHub Actions de teste ainda (FAT-6).
+- **Deploy atual está defasado:** a revisão `fatuus-00004-fvz` no Cloud Run é anterior à expansão da Camada 0, ao retry guiado e à mudança de CORS por env. O próximo deploy precisa de `FATUUS_CORS_ORIGINS` (FAT-12) e da rotação da credencial Basic Auth (FAT-13).
 
 ## Como rodar agora
 

@@ -13,5 +13,5 @@
 | FAT-9 | Recalibrar a faixa de variação de tamanho do gate: hoje rejeita reescritas compactas/fiéis (confirmado em produção, 0,38x o original), só aceita reescritas que crescem | feita | 7 |
 | FAT-10 | Bloqueia o próximo deploy no Cloud Run: CORS do `AgentOS` (`allow_credentials=True`, allowlist incluindo `agno.com`/`localhost:3000`) permite leitura cross-origin autenticada. Fix: `AgentOS(..., cors_allowed_origins=[...])`, substituindo allowlist default e travando com teste de regressão. | feita | 9 |
 | FAT-11 | Publicar `fatuus` 0.1.0 no PyPI — `python -m build` e `twine check` já validados; falta credencial PyPI do titular | aberta | 13 |
-| FAT-12 | Definir `FATUUS_CORS_ORIGINS` com as URLs do Cloud Run no próximo deploy — as URLs de produção saíram do código (repo público não carrega infra); sem a env o CORS cobre só localhost | aberta | — |
+| FAT-12 | Definir `FATUUS_CORS_ORIGINS` com as URLs do Cloud Run no próximo deploy — as URLs de produção saíram do código (repo público não carrega infra); sem a env o CORS cobre só localhost | feita | — |
 | FAT-13 | Rotacionar a credencial Basic Auth de produção — a atual circulou em texto plano em sessões de assistentes de IA | aberta | — |

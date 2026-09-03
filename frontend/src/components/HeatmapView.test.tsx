@@ -53,6 +53,30 @@ describe("HeatmapView", () => {
     expect(screen.queryByText(/"b"/)).not.toBeInTheDocument();
   });
 
+  it("highlights structural matches with their own class and summary label", () => {
+    const structuralText = "Não se trata de rapidez, mas de segurança.";
+    const term = "Não se trata de rapidez, mas";
+    const structuralMatches = [
+      {
+        term,
+        start: 0,
+        end: term.length,
+        pattern: "x",
+        name: "não se trata de X, mas Y",
+      },
+    ];
+
+    const { container } = render(
+      <HeatmapView text={structuralText} matches={[]} structuralMatches={structuralMatches} />
+    );
+
+    const mark = container.querySelector("mark.mark--structural");
+    expect(mark?.textContent).toBe(term);
+    expect(
+      screen.getByText("padrão estrutural: não se trata de x, mas y — 1 ocorrência")
+    ).toBeInTheDocument();
+  });
+
   it("highlights the correct substring when an emoji precedes the match", () => {
     const textWithEmoji = "Olá 🚀 É importante ressaltar que o sistema funciona.";
     const term = "É importante ressaltar que";

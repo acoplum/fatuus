@@ -35,7 +35,11 @@ export function ReportPanel({ report }: ReportPanelProps) {
 
       <TextViewer before={originalText} after={clean.cleaned_text} />
 
-      <HeatmapView text={originalText} matches={before.slop_matches} />
+      <HeatmapView
+        text={originalText}
+        matches={before.slop_matches}
+        structuralMatches={before.structural_matches}
+      />
 
       <PipelineExplanation
         accepted={clean.layer1_accepted}

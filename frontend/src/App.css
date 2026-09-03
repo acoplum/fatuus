@@ -721,6 +721,11 @@ body {
   font-weight: 500;
 }
 
+.heatmap-view mark.mark--structural {
+  background: #fde68a;
+  color: #78350f;
+}
+
 /* Pipeline Explanation */
 .pipeline-explanation__grid {
   display: grid;

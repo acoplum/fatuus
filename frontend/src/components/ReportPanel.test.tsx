@@ -3,11 +3,30 @@ import { describe, expect, it } from "vitest";
 import type { AnalysisReport } from "../types";
 import { ReportPanel } from "./ReportPanel";
 
+const EMPTY_TYPOGRAPHY = {
+  em_dash_count: 0,
+  em_dash_per_100_words: 0,
+  curly_quote_count: 0,
+  ellipsis_char_count: 0,
+  space_lookalike_count: 0,
+};
+
+const EMPTY_FORMATTING = {
+  bold_segment_count: 0,
+  bold_bullet_count: 0,
+  emoji_heading_count: 0,
+};
+
 const report: AnalysisReport = {
   originalText: "É importante ressaltar que o sistema é robusto.",
   clean: {
     cleaned_text: "O sistema é robusto e rápido.",
-    layer0: { cleaned_text: "O sistema é robusto.", invisible_removed: 0, slop_replaced: 1 },
+    layer0: {
+      cleaned_text: "O sistema é robusto.",
+      invisible_removed: 0,
+      typography_normalized: 0,
+      slop_replaced: 1,
+    },
     layer1_accepted: true,
     layer1_attempts: 1,
     gate_reasons: [],
@@ -18,8 +37,12 @@ const report: AnalysisReport = {
     slop_count: 1,
     slop_density_per_100_words: 12.5,
     invisible_char_count: 0,
+    structural_count: 0,
     sentence_metrics: { sentence_count: 1, avg_words_per_sentence: 8, std_dev_words: 0, burstiness: -0.75 },
+    typography: EMPTY_TYPOGRAPHY,
+    formatting: EMPTY_FORMATTING,
     slop_matches: [{ term: "É importante ressaltar que", start: 0, end: 27, pattern: "x" }],
+    structural_matches: [],
     invisible_chars: [],
   },
   after: {
@@ -28,8 +51,12 @@ const report: AnalysisReport = {
     slop_count: 0,
     slop_density_per_100_words: 0,
     invisible_char_count: 0,
+    structural_count: 0,
     sentence_metrics: { sentence_count: 1, avg_words_per_sentence: 6, std_dev_words: 0, burstiness: 0.2 },
+    typography: EMPTY_TYPOGRAPHY,
+    formatting: EMPTY_FORMATTING,
     slop_matches: [],
+    structural_matches: [],
     invisible_chars: [],
   },
 };

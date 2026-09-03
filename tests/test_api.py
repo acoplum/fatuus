@@ -5,6 +5,7 @@ from unittest.mock import patch
 os.environ["FATUUS_BASIC_AUTH_USER"] = "tester@example.com"
 os.environ["FATUUS_BASIC_AUTH_PASSWORD"] = "s3cret-test-value"
 os.environ.setdefault("GOOGLE_API_KEY", "test-key-for-unit-tests")
+os.environ["FATUUS_CORS_ORIGINS"] = "https://fatuus.example.com"
 
 from fastapi.testclient import TestClient
 
@@ -160,13 +161,13 @@ class TestCORSOrigins(unittest.TestCase):
         response = client.options(
             "/config",
             headers={
-                "Origin": "https://fatuus-571033381701.southamerica-east1.run.app",
+                "Origin": "https://fatuus.example.com",
                 "Access-Control-Request-Method": "GET",
             },
         )
         self.assertEqual(
             response.headers.get("access-control-allow-origin"),
-            "https://fatuus-571033381701.southamerica-east1.run.app",
+            "https://fatuus.example.com",
         )
 
 

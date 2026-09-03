@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 from agno.db.sqlite import SqliteDb
-from agno.models.google import Gemini
 from agno.os import AgentOS
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -13,10 +12,9 @@ from pydantic import BaseModel, Field
 
 from .auth import BasicAuthMiddleware
 from .detector import FatuusDetector
+from .models import build_model
 from .pipeline import HumanizationPipeline
 from .sanitizer import FatuusSanitizer
-
-MODEL_ID = os.environ.get("FATUUS_GEMINI_MODEL", "gemini-3.7-flash")
 
 # 20 000 caracteres ≈ 3 300 palavras em PT-BR: um artigo ou post longo, que é
 # o caso de uso real da ferramenta. O teto existe por custo, não por formato:
@@ -46,7 +44,7 @@ def clean(payload: TextRequest) -> dict:
     sanitizer = FatuusSanitizer(lang=payload.lang)
     sanitized = sanitizer.clean(payload.text)
 
-    pipeline = HumanizationPipeline(Gemini(id=MODEL_ID), lang=payload.lang)
+    pipeline = HumanizationPipeline(build_model(), lang=payload.lang)
     result = pipeline.run(sanitized["cleaned_text"], original_text=payload.text)
 
     return {
@@ -83,13 +81,13 @@ def frontend_index():
 # 4 agentes por requisição (pipeline.py), porque o texto e o idioma variam
 # a cada chamada. Registrar agentes fixos aqui fica para quando o frontend
 # (Fase 3) precisar dos endpoints nativos de chat/streaming do AgentOS.
+# Sem FATUUS_CORS_ORIGINS o default cobre só desenvolvimento local — a URL
+# pública de cada deploy entra por env var, nunca hardcoded no repositório.
 _CORS_ORIGINS_ENV = os.environ.get("FATUUS_CORS_ORIGINS")
 CORS_ALLOWED_ORIGINS = (
     [orig.strip() for orig in _CORS_ORIGINS_ENV.split(",") if orig.strip()]
     if _CORS_ORIGINS_ENV
     else [
-        "https://fatuus-571033381701.southamerica-east1.run.app",
-        "https://fatuus-lnpwo6gq7a-rj.a.run.app",
         "http://localhost:8080",
         "http://localhost:8099",
         "http://127.0.0.1:8080",

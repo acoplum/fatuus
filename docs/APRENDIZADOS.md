@@ -21,5 +21,5 @@
 ### FAT-A4 · CI precisa executar o mesmo contrato do release
 **Data:** 2026-09-14 · **Origem:** FAT-6 / preparação da distribuição
 **O que achávamos:** Que as suítes locais documentadas bastavam para manter lint, tipos, backend e frontend alinhados entre contribuições.
-**O que era:** Não havia workflow que executasse esses gates em push ou pull request; além disso, mypy revelou dois contratos de tipo que a suíte de comportamento não exercitava (`any` usado como tipo e a lista de `Step` passada ao Agno).
-**O que muda:** O repositório agora instala as dependências de desenvolvimento, roda Ruff, mypy e pytest no Python e build/testes do frontend em `.github/workflows/ci.yml`; os dois pontos de tipo foram corrigidos sem alterar o comportamento do pipeline.
+**O que era:** Não havia workflow que executasse esses gates em push ou pull request; além disso, mypy revelou dois contratos de tipo que a suíte de comportamento não exercitava (`any` usado como tipo e a lista de `Step` passada ao Agno). A primeira execução remota também mostrou que a seleção padrão do Ruff mudou entre versões.
+**O que muda:** O repositório agora instala as dependências de desenvolvimento, roda Ruff, mypy e pytest no Python e build/testes do frontend em `.github/workflows/ci.yml`; os dois pontos de tipo foram corrigidos sem alterar o comportamento do pipeline e as regras de lint essenciais foram explicitadas no `pyproject.toml`.

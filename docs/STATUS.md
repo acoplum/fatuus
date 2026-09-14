@@ -23,7 +23,7 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
   - **Conflito de rota com o `AgentOS`:** `AgentOS.get_app()` reivindica `GET /` por padrão para sua própria rota JSON de metadados, o que sombrearia o `index.html` do frontend. Resolvido com o parâmetro documentado `on_route_conflict="preserve_base_app"` do construtor do `AgentOS` (mecanismo suportado, não workaround), com teste de regressão (`TestFrontendRootRoute`) guardando contra uma versão futura do `agno` reverter o comportamento.
   - **CORS restrito (FAT-10):** `AgentOS` configurado com `cors_allowed_origins` explícito. Em 2026-09-02 as URLs de produção **saíram do código** (repo público não carrega infra): o default cobre só localhost e o deploy define `FATUUS_CORS_ORIGINS` — configuração aplicada no deploy `fatuus-00005-g6j` (FAT-12 concluída).
   - **Verificação:** 75 testes de backend passando (`pytest`), 38 testes de frontend passando (`npm test`, dentro de `frontend/`), build do frontend (`tsc` + `vite`) e pacote PyPI (`python -m build` + `twine check`) validados.
-- **CI (FAT-6):** workflow publicado em `.github/workflows/ci.yml`, com gates de Ruff, mypy e pytest no Python e de build/testes no frontend. A primeira execução remota encontrou regras adicionais do Ruff 0.16 não explicitadas no projeto; a seleção do lint foi fixada no `pyproject.toml` e será revalidada no próximo push.
+- **CI (FAT-6):** workflow publicado em `.github/workflows/ci.yml`, com gates de Ruff, mypy e pytest no Python e de build/testes no frontend. A primeira execução remota encontrou regras adicionais do Ruff 0.16 não explicitadas no projeto; após fixar a seleção do lint no `pyproject.toml`, a execução `34910498800` passou nos dois jobs (`b5ce246`).
 
 ## Evidência da verificação em produção (2026-09-02)
 
@@ -38,7 +38,7 @@ Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por req
 
 - **Suporte a idiomas além de PT-BR/EN:** fora de escopo nesta fase — cada idioma exige dicionário de marcadores próprio, não há heurística universal.
 - **Publicação no PyPI:** pacote construído e validado (`twine check`), falta a credencial do titular (FAT-11).
-- **CI:** workflow de GitHub Actions publicado; a primeira execução falhou somente no lint por deriva de regras padrão do Ruff, com correção preparada para a próxima execução.
+- **CI:** workflow de GitHub Actions publicado e validado na execução remota `34910498800`; o runner registrou apenas avisos de migração do Node.js usado pelas actions.
 - **Deploy atualizado:** implantada revisão `fatuus-00005-g6j` (commit `e20127d`) com Camada 0 expandida, retry guiado e `FATUUS_CORS_ORIGINS` ativo (FAT-12 concluída). Falta rotação da credencial Basic Auth (FAT-13).
 
 ## Como rodar agora

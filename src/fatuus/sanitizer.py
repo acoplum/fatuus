@@ -1,7 +1,7 @@
 """Módulo de sanitização e des-clichêização determinística (Fatuus Sanitizer)."""
 
 import re
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 from .dicionarios import (
     LINE_SEPARATOR_CHARS,
     SPACE_LOOKALIKE_CHARS,
@@ -214,7 +214,7 @@ class FatuusSanitizer:
         cleaned = re.sub(r"(^|\n) +", r"\1", cleaned)
         return cleaned, replacements_made
 
-    def clean(self, text: str) -> Dict[str, any]:
+    def clean(self, text: str) -> Dict[str, Any]:
         """Executa limpeza determinística completa."""
         no_invisible, invisible_count = self.remove_invisible_chars(text)
         normalized, typography_count = self.normalize_typography(no_invisible)

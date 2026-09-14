@@ -1,7 +1,7 @@
 """Orquestração do pipeline agêntico da Camada 1."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from agno.run.base import RunStatus
 from agno.workflow.step import Step
@@ -188,7 +188,7 @@ class HumanizationPipeline:
                     feedback,
                 )
             )
-        return Workflow(name="fatuus_camada1", steps=steps)
+        return Workflow(name="fatuus_camada1", steps=cast(Any, steps))
 
     def run(self, sanitized_text: str, original_text: str = "") -> PipelineResult:
         """Executa a Camada 1 sobre um texto já limpo pela Camada 0.

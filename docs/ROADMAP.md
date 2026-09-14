@@ -50,5 +50,5 @@ Detalhe completo em [`features/camada-2-frontend`](features/camada-2-frontend/).
   - [`CLA.md`](../CLA.md) + verificação automática em `.github/workflows/cla.yml` (mecanismo do `spec-registro-decisao`). Ativa no primeiro push.
 - [ ] **13. Publicar no PyPI** (FAT-11)
   - Gate: `pip install fatuus` instala a 0.1.0 e `fatuus probe` roda. Build e `twine check` já validados.
-- [ ] **14. CI com GitHub Actions** (FAT-6)
-  - Gate: pytest + testes do frontend rodando em PR.
+- [x] **14. CI com GitHub Actions** — ✅ feito em 2026-09-14 (FAT-6)
+  - Gate: `.github/workflows/ci.yml` executa Ruff, mypy e pytest no Python, além do build e dos testes do frontend, em push para `main` e pull request.

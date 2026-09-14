@@ -1,6 +1,6 @@
 # Status — fatuus
 
-**Atualizado:** 2026-09-03 · **Estágio:** em construção
+**Atualizado:** 2026-09-14 · **Estágio:** em construção; CI publicado
 
 ## O que é
 
@@ -21,8 +21,9 @@ Kit open source que detecta vícios de linguagem sintética (*slop*) e caractere
   - **Limitações conhecidas:** sem streaming (spinner simples até a resposta final), sem histórico de análises anteriores, sem multiusuário (Basic Auth global, uma credencial por instância self-hosted).
   - **Migração do middleware de auth:** Basic Auth saiu de um `Depends` do FastAPI — que nunca cobria o `Mount` do Starlette usado para servir o frontend, nem rotas WebSocket — para um middleware ASGI puro (`BasicAuthMiddleware`, em `src/fatuus/auth.py`), cobrindo HTTP e WebSocket por igual. Isso fechou de passagem o gap de `/docs`, `/openapi.json` e `/redoc` sem autenticação, documentado antes nesta página como residual aceito. A revisão de segurança da migração também achou e corrigiu uma regressão real: credencial não-ASCII no header `Authorization` derrubava `secrets.compare_digest` com `TypeError` não tratado, virando 500 em vez de 401 limpo — corrigido comparando bytes UTF-8.
   - **Conflito de rota com o `AgentOS`:** `AgentOS.get_app()` reivindica `GET /` por padrão para sua própria rota JSON de metadados, o que sombrearia o `index.html` do frontend. Resolvido com o parâmetro documentado `on_route_conflict="preserve_base_app"` do construtor do `AgentOS` (mecanismo suportado, não workaround), com teste de regressão (`TestFrontendRootRoute`) guardando contra uma versão futura do `agno` reverter o comportamento.
-  - **CORS restrito (FAT-10):** `AgentOS` configurado com `cors_allowed_origins` explícito. Em 2026-09-02 as URLs de produção **saíram do código** (repo público não carrega infra): o default cobre só localhost e o deploy define `FATUUS_CORS_ORIGINS` — pendência FAT-12 para o próximo deploy.
+  - **CORS restrito (FAT-10):** `AgentOS` configurado com `cors_allowed_origins` explícito. Em 2026-09-02 as URLs de produção **saíram do código** (repo público não carrega infra): o default cobre só localhost e o deploy define `FATUUS_CORS_ORIGINS` — configuração aplicada no deploy `fatuus-00005-g6j` (FAT-12 concluída).
   - **Verificação:** 75 testes de backend passando (`pytest`), 38 testes de frontend passando (`npm test`, dentro de `frontend/`), build do frontend (`tsc` + `vite`) e pacote PyPI (`python -m build` + `twine check`) validados.
+- **CI (FAT-6):** workflow publicado em `.github/workflows/ci.yml`, com gates de Ruff, mypy e pytest no Python e de build/testes no frontend. A primeira execução remota ocorrerá no próximo push para `main` ou pull request; os mesmos comandos passam localmente nesta revisão.
 
 ## Evidência da verificação em produção (2026-09-02)
 
@@ -37,7 +38,7 @@ Redeploy pós-fix de segurança, revisão `fatuus-00001-5z6`. Confirmado por req
 
 - **Suporte a idiomas além de PT-BR/EN:** fora de escopo nesta fase — cada idioma exige dicionário de marcadores próprio, não há heurística universal.
 - **Publicação no PyPI:** pacote construído e validado (`twine check`), falta a credencial do titular (FAT-11).
-- **CI:** sem GitHub Actions de teste ainda (FAT-6).
+- **CI:** workflow de GitHub Actions publicado; falta observar a primeira execução remota em push para `main` ou pull request.
 - **Deploy atualizado:** implantada revisão `fatuus-00005-g6j` (commit `e20127d`) com Camada 0 expandida, retry guiado e `FATUUS_CORS_ORIGINS` ativo (FAT-12 concluída). Falta rotação da credencial Basic Auth (FAT-13).
 
 ## Como rodar agora

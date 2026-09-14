@@ -17,3 +17,9 @@
 **O que achávamos:** Que exigir melhora estrita de burstiness no gate só afetava texto uniforme de LLM — texto humano "saudável" teria burstiness positiva e passaria.
 **O que era:** A fórmula B = (σ−μ)/(σ+μ) só fica positiva quando o desvio-padrão supera a média de palavras por frase — o que exige alternância extrema (frases de 1 palavra ao lado de frases de 20+). Texto humano típico mede entre −0,7 e −0,1. Exigir melhora estrita rejeitava qualquer reescrita que só corrigisse clichê ou padrão estrutural sem mexer no ritmo.
 **O que muda:** O gate ganhou duas faixas (`gate.py`): burstiness negativa era o problema e precisa melhorar; burstiness já saudável só precisa não piorar além de 0,1 de tolerância. Teste de regressão `test_healthy_burstiness_only_needs_to_not_get_worse`.
+
+### FAT-A4 · CI precisa executar o mesmo contrato do release
+**Data:** 2026-09-14 · **Origem:** FAT-6 / preparação da distribuição
+**O que achávamos:** Que as suítes locais documentadas bastavam para manter lint, tipos, backend e frontend alinhados entre contribuições.
+**O que era:** Não havia workflow que executasse esses gates em push ou pull request; além disso, mypy revelou dois contratos de tipo que a suíte de comportamento não exercitava (`any` usado como tipo e a lista de `Step` passada ao Agno).
+**O que muda:** O repositório agora instala as dependências de desenvolvimento, roda Ruff, mypy e pytest no Python e build/testes do frontend em `.github/workflows/ci.yml`; os dois pontos de tipo foram corrigidos sem alterar o comportamento do pipeline.

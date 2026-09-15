@@ -1,5 +1,7 @@
 # Camada 2 — Frontend Interativo (React)
 
+**Estágio:** pronta — build, testes e deploy no Cloud Run validados; métricas de uso ainda não instrumentadas
+
 ## Objetivo
 
 Dar visibilidade em tempo real do que a Camada 0/1 faz com o texto — onde estão os clichês, como a cadência mudou, o que o pipeline aceitou ou rejeitou — para quem revisa conteúdo antes de publicar.
@@ -15,4 +17,4 @@ Telas: editor de entrada, heatmap de termos sintéticos (destaque inline + lista
 ## Métricas
 
 - Tempo até o usuário ver o primeiro resultado do pipeline na tela — não instrumentado ainda.
-- Depende da Camada 1 estar implementada para ter dado real a medir.
+- A Camada 1 já está implementada e validada; falta instrumentar o tempo até o primeiro resultado em uso real.
